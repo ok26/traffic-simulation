@@ -1,13 +1,24 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+enum CarState
+{
+    Lane,
+    Intersection,
+    Lost
+}
+
 public class Car : MonoBehaviour
 {
     public RoadNetwork roadNetwork;
     public RoadNode startPoint;
     public RoadNode goal;
-    Stack<LaneConnection> roadPath;
+
+    RoadPath roadPath;
     Lane currentLane;
+    NodeBehavior currentIntersection;
+    CarState state;
+
     PurePursuit purePursuit;
     IDM idm;
 
@@ -18,27 +29,89 @@ public class Car : MonoBehaviour
     public float steeringAngle = 0.0f;
     public float maxSpeed = 5f;
 
+    public float speedLimit
+    {
+        get
+        {
+            switch (state)
+            {
+                case CarState.Lane:
+                return currentLane != null ? currentLane.segment.speedLimit : 0f;
+                case CarState.Intersection:
+                return currentIntersection != null ? currentIntersection.speedLimit : 0f;
+                case CarState.Lost:
+                return 0f;
+            }
+            return 0f;
+        }
+    }
+
     void Start()
     {
         if (roadNetwork == null || startPoint == null || goal == null) 
             return;
 
         roadPath = Astar.findPath(roadNetwork, startPoint, goal);
-        if (roadPath.Count == 0)
+        if (roadPath == null)
             return;
 
-        currentLane = roadPath.Peek().from;
+        currentLane = roadPath.startingLane;
+        state = CarState.Lane;
         purePursuit = new PurePursuit();
         idm = new IDM();
     }
 
     void Update()
     {
-        if (currentLane == null)
-            return;
+        switch (state)
+        {
+            case CarState.Lane:
+            followLane();
+            break;
+            case CarState.Intersection:
+            followIntersection();
+            break;
+            case CarState.Lost:
+            // Placeholder might delete
+            break;
+        }
+    }
 
-        steeringAngle = purePursuit.CalculateSteeringAngle(this, currentLane);
-        velocity += idm.CalculateCarAcceleration(this, currentLane.segment.speedLimit) * Time.deltaTime;
+    void followIntersection()
+    {
+        if (currentIntersection == null)
+        {
+            state = CarState.Lost;
+            return;
+        }
+
+        CarAction action = currentIntersection.getCarAction(this);
+
+        switch (action)
+        {
+            case CarAction.Drive:
+            followPath(roadPath.connections.Peek().transitionCurve);
+            break;
+            case CarAction.Wait:
+            break;
+        }
+    }
+
+    void followLane()
+    {
+        if (currentLane == null)
+        {
+            state = CarState.Lost;
+            return;
+        }
+
+        followPath(currentLane.points);
+    }
+
+    void followPath(List<Vector3> path)
+    {
+        steeringAngle = purePursuit.CalculateSteeringAngle(this, path);
+        velocity += idm.CalculateCarAcceleration(this, speedLimit) * Time.deltaTime;
         
         velocity = Mathf.Clamp(velocity, -maxSpeed, maxSpeed);
 
@@ -59,18 +132,33 @@ public class Car : MonoBehaviour
         if (direction != Vector3.zero) 
             transform.rotation = Quaternion.LookRotation(direction, Vector3.up); 
 
-        // Change
-        if (Vector3.Distance(position, currentLane.getEndPos()) < 1.0f)
+        // Change (probable need to update how to detect when should change lane)
+        if (Vector3.Distance(position, path[^1]) < 0.2f)
         {
-            if (roadPath.Count == 0)
+            if (roadPath.connections.Count == 0)
             {
                 Destroy(gameObject);
             }
             else
             {
-                // Do some goofy bussiness
-                
+                updatePath();
             }
+        }   
+    }
+
+    void updatePath()
+    {
+        switch (state)
+        {
+            case CarState.Lane:
+            state = CarState.Intersection;
+            currentIntersection = roadPath.connections.Peek().behavior;
+            break;
+            case CarState.Intersection:
+            state = CarState.Lane;
+            currentLane = roadPath.connections.Peek().to;
+            roadPath.connections.Pop();
+            break;
         }
     }
 }

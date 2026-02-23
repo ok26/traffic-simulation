@@ -3,6 +3,72 @@ using UnityEngine;
 
 public class Util
 {
+    static float GetSweepRadians(float startAngle, float endAngle, bool clockwise)
+    {
+        float ccwDelta = Mathf.DeltaAngle(startAngle * Mathf.Rad2Deg, endAngle * Mathf.Rad2Deg) * Mathf.Deg2Rad;
+
+        if (clockwise)
+        {
+            return ccwDelta <= 0f ? ccwDelta : ccwDelta - Mathf.PI * 2f;
+        }
+
+        return ccwDelta >= 0f ? ccwDelta : ccwDelta + Mathf.PI * 2f;
+    }
+
+    static (Vector3 center, float radius, float startAngle, float sweep) ChooseArcGeometry(
+        Vector3 from,
+        Vector3 to,
+        bool clockwise)
+    {
+        Vector3[] centers =
+        {
+            new(from.x, 0f, to.z),
+            new(to.x, 0f, from.z)
+        };
+
+        int bestIndex = 0;
+        float bestCost = float.MaxValue;
+        float[] candidateRadius = new float[centers.Length];
+        float[] candidateStart = new float[centers.Length];
+        float[] candidateSweep = new float[centers.Length];
+
+        for (int i = 0; i < centers.Length; i++)
+        {
+            Vector3 center = centers[i];
+            Vector3 fromOffset = from - center;
+            Vector3 toOffset = to - center;
+
+            float radiusFrom = fromOffset.magnitude;
+            float radiusTo = toOffset.magnitude;
+            float radius = (radiusFrom + radiusTo) * 0.5f;
+
+            float startAngle = Mathf.Atan2(fromOffset.z, fromOffset.x);
+            float endAngle = Mathf.Atan2(toOffset.z, toOffset.x);
+            float sweep = GetSweepRadians(startAngle, endAngle, clockwise);
+
+            float radiusMismatch = Mathf.Abs(radiusFrom - radiusTo);
+            float quarterTurnPenalty = Mathf.Abs(Mathf.Abs(sweep) - Mathf.PI * 0.5f);
+            float cost = radiusMismatch + quarterTurnPenalty;
+
+            candidateRadius[i] = radius;
+            candidateStart[i] = startAngle;
+            candidateSweep[i] = sweep;
+
+            if (cost < bestCost)
+            {
+                bestCost = cost;
+                bestIndex = i;
+            }
+        }
+
+        return (
+            centers[bestIndex],
+            candidateRadius[bestIndex],
+            candidateStart[bestIndex],
+            candidateSweep[bestIndex]
+        );
+    }
+
     // Only for axis aligned as for now
     public static List<Vector3> GenerateArc(
         Vector3 from,
@@ -11,26 +77,25 @@ public class Util
     {
         var points = new List<Vector3>();
 
-        Vector3 center;
-        if (clockwise) center = new Vector3(from.x, 0f, to.z);
-        else center = new Vector3(to.x, 0f, from.z);
+        if (Vector3.Distance(from, to) < 0.001f)
+        {
+            points.Add(from);
+            return points;
+        }
 
-        float radius = Mathf.Abs(from.x - to.x);
+        var (center, radius, startAngle, sweep) = ChooseArcGeometry(from, to, clockwise);
 
-        // Get starting angle
-        float startAngle = 0f;
-        Vector3 r = from - center;
+        if (radius < 0.001f)
+        {
+            points.Add(from);
+            points.Add(to);
+            return points;
+        }
 
-        if (Mathf.Abs(r.x) > 0.001f)
-            startAngle = r.x > 0 ? 0f : Mathf.PI;
-        else
-            startAngle = r.z > 0 ? Mathf.PI * 0.5f : Mathf.PI * 1.5f;
-        float endAngle = clockwise ? 
-            endAngle = startAngle - Mathf.PI * 0.5f :
-            startAngle + Mathf.PI * 0.5f;
-
-        float arcLength = radius * Mathf.Abs(endAngle - startAngle);
+        float endAngle = startAngle + sweep;
+        float arcLength = radius * Mathf.Abs(sweep);
         int steps = Mathf.CeilToInt(arcLength / Consts.pointSpacing);
+        steps = Mathf.Max(1, steps);
 
         for (int i = 0; i <= steps; i++)
         {
@@ -62,5 +127,28 @@ public class Util
         }
 
         return points;
+    }
+
+    public static Vector3 getPointAtDistanceFrom(
+        Vector3 from, 
+        List<Vector3> points, 
+        float distance) 
+        {
+        int closestPointIdx = 0;
+        float closestsDistance = Vector3.Distance(from, points[0]);
+        for (int i = 1; i < points.Count; i++)
+        {
+            Vector3 point = points[i];
+            float distanceToPoint = Vector3.Distance(from, point);
+            if (distanceToPoint < closestsDistance)
+            {   
+                closestsDistance = distanceToPoint;
+                closestPointIdx = i;
+            }   
+        }
+
+        int pointsLookAheadCnt = Mathf.CeilToInt(distance / Consts.pointSpacing);
+        int pointAtDistanceIdx = Mathf.Min(points.Count - 1, closestPointIdx + pointsLookAheadCnt);
+        return points[pointAtDistanceIdx];
     }
 }

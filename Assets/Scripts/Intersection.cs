@@ -1,13 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
-
-public class LaneConnection
-{
-    public Lane from;
-    public Lane to;
-    public List<Vector3> transitionCurve;
-}
 
 public enum RoadConnection
 {
@@ -21,16 +15,47 @@ public enum RoadConnection
     BotOut
 }
 
-public abstract class NodeBehavior
+public enum CarAction
 {
-    public abstract Vector3 getPositionOfConnection(RoadConnection connection);
-    public abstract Vector3 getPosition();
+    Drive,
+    Wait
 }
 
-// TODO: Add rotations
+public abstract class NodeBehavior
+{
+    protected Dictionary<RoadConnection, Lane> connections = new();
+    public abstract float speedLimit { get; }
+    public abstract Vector3 getPositionOfConnection(RoadConnection connection);
+    public abstract Vector3 getPosition();
+    public abstract CarAction getCarAction(Car car);
+    public abstract void updateLaneConnections();
+    public abstract List<LaneConnection> getLaneConnections(Lane lane);
+
+    // Debugging for now
+    public abstract List<LaneConnection> getLaneConnections();
+
+    public virtual void connectLane(Lane lane, RoadConnection connection)
+    {
+        connections[connection] = lane;
+    }
+
+    public virtual Vector3 getPositionOfConnection(Lane lane)
+    {
+        foreach (var pair in connections)
+        {
+            if (pair.Value == lane)
+                return getPositionOfConnection(pair.Key);
+        }
+
+        return Vector3.zero;
+    }
+}
+
+// TODO: Add rotations, yeah you wish
 public class Endpoint : NodeBehavior
 {
     Vector3 position;
+    public override float speedLimit => 0f;
 
     public Endpoint(Vector3 position)
     {
@@ -68,6 +93,26 @@ public class Endpoint : NodeBehavior
 
         return position;
     }
+
+    public override CarAction getCarAction(Car car)
+    {
+        return CarAction.Drive;
+    }
+
+    public override List<LaneConnection> getLaneConnections(Lane lane)
+    {
+        return new();
+    }
+
+    public override void updateLaneConnections()
+    {
+        throw new NotImplementedException();
+    }
+
+    public override List<LaneConnection> getLaneConnections()
+    {
+        return new();
+    }
 }
 
 public class StopSignIntersection : NodeBehavior
@@ -75,11 +120,23 @@ public class StopSignIntersection : NodeBehavior
     Vector3 position;
 
     // Connection positions, indexed with RoadConnection
-    List<Vector3> cPos = new List<Vector3>(8);
+    Vector3[] cPos = new Vector3[Enum.GetValues(typeof(RoadConnection)).Length];
+
+    // LaneConnections for each connected incoming lane
+    List<LaneConnection>[] laneConnections = 
+        new List<LaneConnection>[Enum.GetValues(typeof(RoadConnection)).Length];
+
+    public override float speedLimit => 2.0f;
 
     public StopSignIntersection(Vector3 position)
     {
         this.position = position;
+
+        for (int i = 0; i < laneConnections.Length; i++)
+        {
+            laneConnections[i] = new();
+        }
+
         foreach (RoadConnection connection in Enum.GetValues(typeof(RoadConnection)))
         {
             cPos[(int)connection] = getPositionOfConnection(connection);
@@ -96,83 +153,115 @@ public class StopSignIntersection : NodeBehavior
 
         Vector3 position = this.position;
 
+        const float laneOffset = 1.2f;
+        
         switch (connection)
         {
             case RoadConnection.TopIn:
             position.x -= Consts.laneWidth / 2;
-            position.z += Consts.laneWidth;
+            position.z += Consts.laneWidth * laneOffset;
             break;
             case RoadConnection.TopOut:
             position.x += Consts.laneWidth / 2;
-            position.z += Consts.laneWidth;
+            position.z += Consts.laneWidth * laneOffset;
             break;
             case RoadConnection.LeftIn:
-            position.x -= Consts.laneWidth;
+            position.x -= Consts.laneWidth * laneOffset;
             position.z -= Consts.laneWidth / 2;
             break;
             case RoadConnection.LeftOut:
-            position.x -= Consts.laneWidth;
+            position.x -= Consts.laneWidth * laneOffset;
             position.z += Consts.laneWidth / 2;
             break;
             case RoadConnection.RightIn:
-            position.x += Consts.laneWidth;
+            position.x += Consts.laneWidth * laneOffset;
             position.z += Consts.laneWidth / 2;
             break;
             case RoadConnection.RightOut:
-            position.x += Consts.laneWidth;
+            position.x += Consts.laneWidth * laneOffset;
             position.z -= Consts.laneWidth / 2;
             break;
             case RoadConnection.BotIn:
             position.x += Consts.laneWidth / 2;
-            position.z -= Consts.laneWidth;
+            position.z -= Consts.laneWidth * laneOffset;
             break;
             case RoadConnection.BotOut:
             position.x -= Consts.laneWidth / 2;
-            position.z -= Consts.laneWidth;
+            position.z -= Consts.laneWidth * laneOffset;
             break;
         }
         return position;
     }
 
-    public List<LaneConnection> getConnectionArcs(RoadConnection from, Lane laneFrom, Lane laneTo)
+    List<RoadConnection> getValidOutgoing(RoadConnection from)
     {
-        List<List<Vector3>> arcs = new();
+        return new();
+    }
 
-        switch (from)
+    public override void updateLaneConnections()
+    {
+        for (int i = 0; i < laneConnections.Length; i++) laneConnections[i].Clear();
+
+        var innerConnectionCurves = new (RoadConnection connectionIn, RoadConnection connectionOut, bool clockwiseCurve)[]
         {
-            case RoadConnection.TopIn:
-            arcs.Add(Util.GenerateArc(cPos[(int)RoadConnection.TopIn], cPos[(int)RoadConnection.RightOut], false));
-            arcs.Add(Util.GenerateArc(cPos[(int)RoadConnection.TopIn], cPos[(int)RoadConnection.LeftOut], true));
-            arcs.Add(Util.GenerateLine(cPos[(int)RoadConnection.TopIn], cPos[(int)RoadConnection.BotOut]));
-            break;
-            case RoadConnection.BotIn:
-            arcs.Add(Util.GenerateArc(cPos[(int)RoadConnection.BotIn], cPos[(int)RoadConnection.RightOut], true));
-            arcs.Add(Util.GenerateArc(cPos[(int)RoadConnection.BotIn], cPos[(int)RoadConnection.LeftOut], false));
-            arcs.Add(Util.GenerateLine(cPos[(int)RoadConnection.BotIn], cPos[(int)RoadConnection.TopOut]));
-            break;
-            case RoadConnection.LeftIn:
-            arcs.Add(Util.GenerateArc(cPos[(int)RoadConnection.LeftIn], cPos[(int)RoadConnection.TopOut], false));
-            arcs.Add(Util.GenerateArc(cPos[(int)RoadConnection.LeftIn], cPos[(int)RoadConnection.BotOut], true));
-            arcs.Add(Util.GenerateLine(cPos[(int)RoadConnection.LeftIn], cPos[(int)RoadConnection.RightOut]));
-            break;
-            case RoadConnection.RightIn:
-            arcs.Add(Util.GenerateArc(cPos[(int)RoadConnection.RightIn], cPos[(int)RoadConnection.BotOut], false));
-            arcs.Add(Util.GenerateArc(cPos[(int)RoadConnection.RightIn], cPos[(int)RoadConnection.TopOut], true));
-            arcs.Add(Util.GenerateLine(cPos[(int)RoadConnection.RightIn], cPos[(int)RoadConnection.LeftOut]));
-            break;
+            (RoadConnection.TopIn, RoadConnection.RightOut, false),
+            (RoadConnection.TopIn, RoadConnection.LeftOut, true),
+            (RoadConnection.BotIn, RoadConnection.RightOut, true),
+            (RoadConnection.BotIn, RoadConnection.LeftOut, false),
+            (RoadConnection.LeftIn, RoadConnection.TopOut, false),
+            (RoadConnection.LeftIn, RoadConnection.BotOut, true),
+            (RoadConnection.RightIn, RoadConnection.BotOut, false),
+            (RoadConnection.RightIn, RoadConnection.TopOut, true),
+        };
+
+        var innerConnectionStraights = new (RoadConnection connectionIn, RoadConnection connectionOut)[]
+        {
+            (RoadConnection.TopIn, RoadConnection.BotOut),
+            (RoadConnection.BotIn, RoadConnection.TopOut),
+            (RoadConnection.LeftIn, RoadConnection.RightOut),
+            (RoadConnection.RightIn, RoadConnection.LeftOut),
+        };
+
+
+        foreach (var (connectionIn, connectionOut, clockwiseCurve) in innerConnectionCurves)
+        {
+            laneConnections[(int)connectionIn].Add(new LaneConnection(
+                connections[connectionIn],
+                connections[connectionOut],
+                Util.GenerateArc(cPos[(int)connectionIn], cPos[(int)connectionOut], clockwiseCurve),
+                this
+            ));
         }
 
-        List<LaneConnection> res = new();
-        for (int i = 0; i < arcs.Count; i++)
+        foreach (var (connectionIn, connectionOut) in innerConnectionStraights)
         {
-            res.Add(new LaneConnection
-            {
-                from = laneFrom,
-                to = laneTo,
-                transitionCurve = arcs[i]
-            });
+            laneConnections[(int)connectionIn].Add(new LaneConnection(
+                connections[connectionIn],
+                connections[connectionOut],
+                Util.GenerateLine(cPos[(int)connectionIn], cPos[(int)connectionOut]),
+                this
+            ));
+        }
+    }
+
+    public override CarAction getCarAction(Car car)
+    {
+        return CarAction.Drive;
+    }
+
+    public override List<LaneConnection> getLaneConnections(Lane lane)
+    {
+        foreach (var pair in connections)
+        {
+            if (pair.Value == lane)
+                return laneConnections[(int)pair.Key];
         }
 
-        return res;
+        return new();
+    }
+
+    public override List<LaneConnection> getLaneConnections()
+    {
+        return laneConnections.SelectMany(x => x).ToList();
     }
 }
