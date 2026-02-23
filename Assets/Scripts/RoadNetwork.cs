@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public static class Consts
+public static class Constants
 {
     public const float laneWidth = 2.0f;
     public const float pointSpacing = 0.1f;
@@ -9,60 +9,60 @@ public static class Consts
 
 public class RoadNode
 {
-    public int id;
-    public NodeBehavior behavior;
-    public List<RoadSegment> connectedSegments = new();
+    public int Id;
+    public NodeBehavior Behavior;
+    public List<RoadSegment> ConnectedSegments = new();
 
     public RoadNode(int id, NodeBehavior behavior)
     {
-        this.id = id;
-        this.behavior = behavior;
+        Id = id;
+        Behavior = behavior;
     }
 
-    public Vector3 position => behavior.getPosition();
+    public Vector3 Position => Behavior.GetPosition();
 }
 
 public class RoadSegment
 {
-    public RoadNode a;
-    public RoadNode b;
-    public List<Lane> lanes = new();
-    public int speedLimit;
+    public RoadNode NodeA;
+    public RoadNode NodeB;
+    public List<Lane> Lanes = new();
+    public int SpeedLimit;
 
     public RoadSegment(RoadNode a, RoadNode b, int speedLimit)
     {
-        this.a = a;
-        this.b = b;
-        this.speedLimit = speedLimit;
+        NodeA = a;
+        NodeB = b;
+        SpeedLimit = speedLimit;
     }
 }
 
 public class Lane
 {
-    public RoadSegment segment;
-    public RoadNode from;
-    public RoadNode to;
-    public List<Vector3> points;
+    public RoadSegment Segment;
+    public RoadNode From;
+    public RoadNode To;
+    public List<Vector3> Points;
 
     public Lane(RoadSegment segment, RoadNode from, RoadNode to)
     {
-        this.segment = segment;
-        this.from = from;
-        this.to = to;
+        Segment = segment;
+        From = from;
+        To = to;
     }
 
-    public void setPoints(Vector3 posFrom, Vector3 posTo)
+    public void SetPoints(Vector3 posFrom, Vector3 posTo)
     {
-        points = Util.GenerateLine(posFrom, posTo);
+        Points = Util.GenerateLine(posFrom, posTo);
     }
 }
 
 public class LaneConnection
 {
-    public Lane from;
-    public Lane to;
-    public List<Vector3> transitionCurve;
-    public NodeBehavior behavior;
+    public Lane From;
+    public Lane To;
+    public List<Vector3> TransitionCurve;
+    public NodeBehavior Behavior;
 
     public LaneConnection(
         Lane from, 
@@ -70,10 +70,10 @@ public class LaneConnection
         List<Vector3> transitionCurve, 
         NodeBehavior behavior)
     {
-        this.from = from;
-        this.to = to;
-        this.transitionCurve = transitionCurve;
-        this.behavior = behavior;
+        From = from;
+        To = to;
+        TransitionCurve = transitionCurve;
+        Behavior = behavior;
     }
 }
 
@@ -122,59 +122,59 @@ public class RoadNetwork : MonoBehaviour
         {
             // Lane going toward intersection
             Lane toIntersection = new Lane(segment, endpoint, stopSignIntersection);
-            toIntersection.setPoints(
-                endpoint.behavior.getPositionOfConnection(endpointOut),
-                stopSignIntersection.behavior.getPositionOfConnection(intersectionIn)
+            toIntersection.SetPoints(
+                endpoint.Behavior.GetPositionOfConnection(endpointOut),
+                stopSignIntersection.Behavior.GetPositionOfConnection(intersectionIn)
             );
-            stopSignIntersection.behavior.connectLane(toIntersection, intersectionIn);
-            endpoint.behavior.connectLane(toIntersection, endpointOut);
-            segment.lanes.Add(toIntersection);
+            stopSignIntersection.Behavior.ConnectLane(toIntersection, intersectionIn);
+            endpoint.Behavior.ConnectLane(toIntersection, endpointOut);
+            segment.Lanes.Add(toIntersection);
 
             // Lane going away from intersection
             Lane fromIntersection = new Lane(segment, stopSignIntersection, endpoint);
-            fromIntersection.setPoints(
-                stopSignIntersection.behavior.getPositionOfConnection(intersectionOut),
-                endpoint.behavior.getPositionOfConnection(endpointIn)
+            fromIntersection.SetPoints(
+                stopSignIntersection.Behavior.GetPositionOfConnection(intersectionOut),
+                endpoint.Behavior.GetPositionOfConnection(endpointIn)
             );
-            stopSignIntersection.behavior.connectLane(fromIntersection, intersectionOut);
-            endpoint.behavior.connectLane(fromIntersection, endpointIn);
-            segment.lanes.Add(fromIntersection);
+            stopSignIntersection.Behavior.ConnectLane(fromIntersection, intersectionOut);
+            endpoint.Behavior.ConnectLane(fromIntersection, endpointIn);
+            segment.Lanes.Add(fromIntersection);
 
-            endpoint.connectedSegments.Add(segment);
-            stopSignIntersection.connectedSegments.Add(segment);
+            endpoint.ConnectedSegments.Add(segment);
+            stopSignIntersection.ConnectedSegments.Add(segment);
         }
 
-        stopSignIntersection.behavior.updateLaneConnections();
+        stopSignIntersection.Behavior.UpdateLaneConnections();
 
         roadSegments.Add(westRoad);
         roadSegments.Add(eastRoad);
         roadSegments.Add(southRoad);
         roadSegments.Add(northRoad);
 
-        roadNodes.Add(endpointA.id, endpointA);
-        roadNodes.Add(endpointB.id, endpointB);
-        roadNodes.Add(endpointC.id, endpointC);
-        roadNodes.Add(endpointD.id, endpointD);
-        roadNodes.Add(stopSignIntersection.id, stopSignIntersection);
+        roadNodes.Add(endpointA.Id, endpointA);
+        roadNodes.Add(endpointB.Id, endpointB);
+        roadNodes.Add(endpointC.Id, endpointC);
+        roadNodes.Add(endpointD.Id, endpointD);
+        roadNodes.Add(stopSignIntersection.Id, stopSignIntersection);
     }
 
-    public List<Lane> getOutgoingLanes(RoadNode roadNode, Lane incomingLane = null)
+    public List<Lane> GetOutgoingLanes(RoadNode roadNode, Lane incomingLane = null)
     {
         List<Lane> lanes = new();
 
         if (incomingLane != null)
         {
-            List<LaneConnection> connections = roadNode.behavior.getLaneConnections(incomingLane);
+            List<LaneConnection> connections = roadNode.Behavior.GetLaneConnections(incomingLane);
             foreach (LaneConnection connection in connections)
             {
-                lanes.Add(connection.to);
+                lanes.Add(connection.To);
             }
         }
-        else foreach (RoadSegment segment in roadNode.connectedSegments)
+        else foreach (RoadSegment segment in roadNode.ConnectedSegments)
         {
-            foreach (Lane lane in segment.lanes)
+            foreach (Lane lane in segment.Lanes)
             {
-                if (lane.from == roadNode)
+                if (lane.From == roadNode)
                     lanes.Add(lane);        
             }
         }

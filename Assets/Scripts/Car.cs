@@ -17,7 +17,7 @@ public class Car : MonoBehaviour
     RoadPath roadPath;
     Lane currentLane;
     NodeBehavior currentIntersection;
-    CarState state;
+    CarState carState;
 
     PurePursuit purePursuit;
     IDM idm;
@@ -29,16 +29,16 @@ public class Car : MonoBehaviour
     public float steeringAngle = 0.0f;
     public float maxSpeed = 5f;
 
-    public float speedLimit
+    public float SpeedLimit
     {
         get
         {
-            switch (state)
+            switch (carState)
             {
                 case CarState.Lane:
-                return currentLane != null ? currentLane.segment.speedLimit : 0f;
+                return currentLane != null ? currentLane.Segment.SpeedLimit : 0f;
                 case CarState.Intersection:
-                return currentIntersection != null ? currentIntersection.speedLimit : 0f;
+                return currentIntersection != null ? currentIntersection.SpeedLimit : 0f;
                 case CarState.Lost:
                 return 0f;
             }
@@ -51,25 +51,25 @@ public class Car : MonoBehaviour
         if (roadNetwork == null || startPoint == null || goal == null) 
             return;
 
-        roadPath = Astar.findPath(roadNetwork, startPoint, goal);
+        roadPath = AStar.FindPath(roadNetwork, startPoint, goal);
         if (roadPath == null)
             return;
 
-        currentLane = roadPath.startingLane;
-        state = CarState.Lane;
+        currentLane = roadPath.StartingLane;
+        carState = CarState.Lane;
         purePursuit = new PurePursuit();
         idm = new IDM();
     }
 
     void Update()
     {
-        switch (state)
+        switch (carState)
         {
             case CarState.Lane:
-            followLane();
+            FollowLane();
             break;
             case CarState.Intersection:
-            followIntersection();
+            FollowIntersection();
             break;
             case CarState.Lost:
             // Placeholder might delete
@@ -77,41 +77,41 @@ public class Car : MonoBehaviour
         }
     }
 
-    void followIntersection()
+    void FollowIntersection()
     {
         if (currentIntersection == null)
         {
-            state = CarState.Lost;
+            carState = CarState.Lost;
             return;
         }
 
-        CarAction action = currentIntersection.getCarAction(this);
+        CarAction action = currentIntersection.GetCarAction(this);
 
         switch (action)
         {
             case CarAction.Drive:
-            followPath(roadPath.connections.Peek().transitionCurve);
+            FollowPath(roadPath.Connections.Peek().TransitionCurve);
             break;
             case CarAction.Wait:
             break;
         }
     }
 
-    void followLane()
+    void FollowLane()
     {
         if (currentLane == null)
         {
-            state = CarState.Lost;
+            carState = CarState.Lost;
             return;
         }
 
-        followPath(currentLane.points);
+        FollowPath(currentLane.Points);
     }
 
-    void followPath(List<Vector3> path)
+    void FollowPath(List<Vector3> path)
     {
         steeringAngle = purePursuit.CalculateSteeringAngle(this, path);
-        velocity += idm.CalculateCarAcceleration(this, speedLimit) * Time.deltaTime;
+        velocity += idm.CalculateCarAcceleration(this, SpeedLimit) * Time.deltaTime;
         
         velocity = Mathf.Clamp(velocity, -maxSpeed, maxSpeed);
 
@@ -135,29 +135,29 @@ public class Car : MonoBehaviour
         // Change (probable need to update how to detect when should change lane)
         if (Vector3.Distance(position, path[^1]) < 0.2f)
         {
-            if (roadPath.connections.Count == 0)
+            if (roadPath.Connections.Count == 0)
             {
                 Destroy(gameObject);
             }
             else
             {
-                updatePath();
+                UpdatePath();
             }
         }   
     }
 
-    void updatePath()
+    void UpdatePath()
     {
-        switch (state)
+        switch (carState)
         {
             case CarState.Lane:
-            state = CarState.Intersection;
-            currentIntersection = roadPath.connections.Peek().behavior;
+            carState = CarState.Intersection;
+            currentIntersection = roadPath.Connections.Peek().Behavior;
             break;
             case CarState.Intersection:
-            state = CarState.Lane;
-            currentLane = roadPath.connections.Peek().to;
-            roadPath.connections.Pop();
+            carState = CarState.Lane;
+            currentLane = roadPath.Connections.Peek().To;
+            roadPath.Connections.Pop();
             break;
         }
     }

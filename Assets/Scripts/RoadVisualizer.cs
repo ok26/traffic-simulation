@@ -21,17 +21,17 @@ public class RoadVisualizer : MonoBehaviour
 
         foreach (var segment in network.GetSegments())
         {
-            foreach (var lane in segment.lanes)
+            foreach (var lane in segment.Lanes)
             {
-                if (lane.points == null || lane.points.Count < 2)
+                if (lane.Points == null || lane.Points.Count < 2)
                     continue;
 
-                Gizmos.color = lane.from.id < lane.to.id ? Color.yellow : Color.cyan;
+                Gizmos.color = lane.From.Id < lane.To.Id ? Color.yellow : Color.cyan;
 
-                for (int i = 0; i < lane.points.Count - 1; i++)
+                for (int i = 0; i < lane.Points.Count - 1; i++)
                 {
-                    Vector3 a = lane.points[i] + Vector3.up * yOffset;
-                    Vector3 b = lane.points[i + 1] + Vector3.up * yOffset;
+                    Vector3 a = lane.Points[i] + Vector3.up * yOffset;
+                    Vector3 b = lane.Points[i + 1] + Vector3.up * yOffset;
 
                     Gizmos.DrawLine(a, b);
                 }
@@ -45,18 +45,18 @@ public class RoadVisualizer : MonoBehaviour
 
         foreach (var node in network.GetNodes())
         {
-            var connections = node.behavior.getLaneConnections();
+            var connections = node.Behavior.GetLaneConnections();
             if (connections == null) continue;
 
             foreach (var connection in connections)
             {
-                if (connection.transitionCurve == null || connection.transitionCurve.Count < 2)
+                if (connection.TransitionCurve == null || connection.TransitionCurve.Count < 2)
                     continue;
 
-                for (int i = 0; i < connection.transitionCurve.Count - 1; i++)
+                for (int i = 0; i < connection.TransitionCurve.Count - 1; i++)
                 {
-                    Vector3 a = connection.transitionCurve[i] + Vector3.up * yOffset;
-                    Vector3 b = connection.transitionCurve[i + 1] + Vector3.up * yOffset;
+                    Vector3 a = connection.TransitionCurve[i] + Vector3.up * yOffset;
+                    Vector3 b = connection.TransitionCurve[i + 1] + Vector3.up * yOffset;
 
                     Gizmos.DrawLine(a, b);
                 }
@@ -71,7 +71,7 @@ public class RoadVisualizer : MonoBehaviour
         foreach (var node in network.GetNodes())
         {
             Gizmos.DrawSphere(
-                node.position + Vector3.up * yOffset,
+                node.Position + Vector3.up * yOffset,
                 0.4f
             );
         }

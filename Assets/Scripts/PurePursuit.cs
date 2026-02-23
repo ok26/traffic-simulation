@@ -4,13 +4,13 @@ using UnityEngine;
 public class PurePursuit
 {
     public float Kdd = 1.0f;
-    public float minLd = 0.1f;
-    public float maxLd = 4.0f;
+    public float MinLd = 0.1f;
+    public float MaxLd = 4.0f;
 
     public float CalculateSteeringAngle(Car car, List<Vector3> path)
     {
-        float ld = Mathf.Clamp(Kdd * car.velocity, minLd, maxLd);
-        Vector3 targetPoint = Util.getPointAtDistanceFrom(car.position, path, ld);
+        float ld = Mathf.Clamp(Kdd * car.velocity, MinLd, MaxLd);
+        Vector3 targetPoint = Util.GetPointAtDistanceFrom(car.position, path, ld);
 
         Vector3 localTarget = car.transform.InverseTransformPoint(targetPoint);
         float alpha = Mathf.Atan2(localTarget.x, localTarget.z);

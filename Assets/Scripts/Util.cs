@@ -94,7 +94,7 @@ public class Util
 
         float endAngle = startAngle + sweep;
         float arcLength = radius * Mathf.Abs(sweep);
-        int steps = Mathf.CeilToInt(arcLength / Consts.pointSpacing);
+        int steps = Mathf.CeilToInt(arcLength / Constants.pointSpacing);
         steps = Mathf.Max(1, steps);
 
         for (int i = 0; i <= steps; i++)
@@ -118,7 +118,7 @@ public class Util
         var points = new List<Vector3>();
 
         float length = Vector3.Distance(start, end);
-        int steps = Mathf.CeilToInt(length / Consts.pointSpacing);
+        int steps = Mathf.CeilToInt(length / Constants.pointSpacing);
 
         for (int i = 0; i <= steps; i++)
         {
@@ -129,7 +129,7 @@ public class Util
         return points;
     }
 
-    public static Vector3 getPointAtDistanceFrom(
+    public static Vector3 GetPointAtDistanceFrom(
         Vector3 from, 
         List<Vector3> points, 
         float distance) 
@@ -147,7 +147,7 @@ public class Util
             }   
         }
 
-        int pointsLookAheadCnt = Mathf.CeilToInt(distance / Consts.pointSpacing);
+        int pointsLookAheadCnt = Mathf.CeilToInt(distance / Constants.pointSpacing);
         int pointAtDistanceIdx = Mathf.Min(points.Count - 1, closestPointIdx + pointsLookAheadCnt);
         return points[pointAtDistanceIdx];
     }

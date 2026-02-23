@@ -24,27 +24,27 @@ public enum CarAction
 public abstract class NodeBehavior
 {
     protected Dictionary<RoadConnection, Lane> connections = new();
-    public abstract float speedLimit { get; }
-    public abstract Vector3 getPositionOfConnection(RoadConnection connection);
-    public abstract Vector3 getPosition();
-    public abstract CarAction getCarAction(Car car);
-    public abstract void updateLaneConnections();
-    public abstract List<LaneConnection> getLaneConnections(Lane lane);
+    public abstract float SpeedLimit { get; }
+    public abstract Vector3 GetPositionOfConnection(RoadConnection connection);
+    public abstract Vector3 GetPosition();
+    public abstract CarAction GetCarAction(Car car);
+    public abstract void UpdateLaneConnections();
+    public abstract List<LaneConnection> GetLaneConnections(Lane lane);
 
     // Debugging for now
-    public abstract List<LaneConnection> getLaneConnections();
+    public abstract List<LaneConnection> GetLaneConnections();
 
-    public virtual void connectLane(Lane lane, RoadConnection connection)
+    public virtual void ConnectLane(Lane lane, RoadConnection connection)
     {
         connections[connection] = lane;
     }
 
-    public virtual Vector3 getPositionOfConnection(Lane lane)
+    public virtual Vector3 GetPositionOfConnection(Lane lane)
     {
         foreach (var pair in connections)
         {
             if (pair.Value == lane)
-                return getPositionOfConnection(pair.Key);
+                return GetPositionOfConnection(pair.Key);
         }
 
         return Vector3.zero;
@@ -55,19 +55,19 @@ public abstract class NodeBehavior
 public class Endpoint : NodeBehavior
 {
     Vector3 position;
-    public override float speedLimit => 0f;
+    public override float SpeedLimit => 0f;
 
     public Endpoint(Vector3 position)
     {
         this.position = position;
     }
 
-    public override Vector3 getPosition()
+    public override Vector3 GetPosition()
     {
         return position;
     }
 
-    public override Vector3 getPositionOfConnection(RoadConnection connection)
+    public override Vector3 GetPositionOfConnection(RoadConnection connection)
     {
         Vector3 position = this.position;
 
@@ -75,41 +75,41 @@ public class Endpoint : NodeBehavior
         {
             case RoadConnection.TopIn:
             case RoadConnection.BotOut:
-            position.x -= Consts.laneWidth / 2;
+            position.x -= Constants.laneWidth / 2;
             break;
             case RoadConnection.TopOut:
             case RoadConnection.BotIn:
-            position.x += Consts.laneWidth / 2;
+            position.x += Constants.laneWidth / 2;
             break;
             case RoadConnection.LeftIn:
             case RoadConnection.RightOut:
-            position.z -= Consts.laneWidth / 2;
+            position.z -= Constants.laneWidth / 2;
             break;
             case RoadConnection.LeftOut:
             case RoadConnection.RightIn:
-            position.z += Consts.laneWidth / 2;
+            position.z += Constants.laneWidth / 2;
             break;
         }
 
         return position;
     }
 
-    public override CarAction getCarAction(Car car)
+    public override CarAction GetCarAction(Car car)
     {
         return CarAction.Drive;
     }
 
-    public override List<LaneConnection> getLaneConnections(Lane lane)
+    public override List<LaneConnection> GetLaneConnections(Lane lane)
     {
         return new();
     }
 
-    public override void updateLaneConnections()
+    public override void UpdateLaneConnections()
     {
         throw new NotImplementedException();
     }
 
-    public override List<LaneConnection> getLaneConnections()
+    public override List<LaneConnection> GetLaneConnections()
     {
         return new();
     }
@@ -126,7 +126,7 @@ public class StopSignIntersection : NodeBehavior
     List<LaneConnection>[] laneConnections = 
         new List<LaneConnection>[Enum.GetValues(typeof(RoadConnection)).Length];
 
-    public override float speedLimit => 2.0f;
+    public override float SpeedLimit => 2.0f;
 
     public StopSignIntersection(Vector3 position)
     {
@@ -139,16 +139,16 @@ public class StopSignIntersection : NodeBehavior
 
         foreach (RoadConnection connection in Enum.GetValues(typeof(RoadConnection)))
         {
-            cPos[(int)connection] = getPositionOfConnection(connection);
+            cPos[(int)connection] = GetPositionOfConnection(connection);
         }
     }
 
-    public override Vector3 getPosition()
+    public override Vector3 GetPosition()
     {
         return position;
     }
 
-    public override Vector3 getPositionOfConnection(RoadConnection connection)
+    public override Vector3 GetPositionOfConnection(RoadConnection connection)
     {
 
         Vector3 position = this.position;
@@ -158,47 +158,47 @@ public class StopSignIntersection : NodeBehavior
         switch (connection)
         {
             case RoadConnection.TopIn:
-            position.x -= Consts.laneWidth / 2;
-            position.z += Consts.laneWidth * laneOffset;
+            position.x -= Constants.laneWidth / 2;
+            position.z += Constants.laneWidth * laneOffset;
             break;
             case RoadConnection.TopOut:
-            position.x += Consts.laneWidth / 2;
-            position.z += Consts.laneWidth * laneOffset;
+            position.x += Constants.laneWidth / 2;
+            position.z += Constants.laneWidth * laneOffset;
             break;
             case RoadConnection.LeftIn:
-            position.x -= Consts.laneWidth * laneOffset;
-            position.z -= Consts.laneWidth / 2;
+            position.x -= Constants.laneWidth * laneOffset;
+            position.z -= Constants.laneWidth / 2;
             break;
             case RoadConnection.LeftOut:
-            position.x -= Consts.laneWidth * laneOffset;
-            position.z += Consts.laneWidth / 2;
+            position.x -= Constants.laneWidth * laneOffset;
+            position.z += Constants.laneWidth / 2;
             break;
             case RoadConnection.RightIn:
-            position.x += Consts.laneWidth * laneOffset;
-            position.z += Consts.laneWidth / 2;
+            position.x += Constants.laneWidth * laneOffset;
+            position.z += Constants.laneWidth / 2;
             break;
             case RoadConnection.RightOut:
-            position.x += Consts.laneWidth * laneOffset;
-            position.z -= Consts.laneWidth / 2;
+            position.x += Constants.laneWidth * laneOffset;
+            position.z -= Constants.laneWidth / 2;
             break;
             case RoadConnection.BotIn:
-            position.x += Consts.laneWidth / 2;
-            position.z -= Consts.laneWidth * laneOffset;
+            position.x += Constants.laneWidth / 2;
+            position.z -= Constants.laneWidth * laneOffset;
             break;
             case RoadConnection.BotOut:
-            position.x -= Consts.laneWidth / 2;
-            position.z -= Consts.laneWidth * laneOffset;
+            position.x -= Constants.laneWidth / 2;
+            position.z -= Constants.laneWidth * laneOffset;
             break;
         }
         return position;
     }
 
-    List<RoadConnection> getValidOutgoing(RoadConnection from)
+    List<RoadConnection> GetValidOutgoing(RoadConnection from)
     {
         return new();
     }
 
-    public override void updateLaneConnections()
+    public override void UpdateLaneConnections()
     {
         for (int i = 0; i < laneConnections.Length; i++) laneConnections[i].Clear();
 
@@ -244,12 +244,12 @@ public class StopSignIntersection : NodeBehavior
         }
     }
 
-    public override CarAction getCarAction(Car car)
+    public override CarAction GetCarAction(Car car)
     {
         return CarAction.Drive;
     }
 
-    public override List<LaneConnection> getLaneConnections(Lane lane)
+    public override List<LaneConnection> GetLaneConnections(Lane lane)
     {
         foreach (var pair in connections)
         {
@@ -260,7 +260,7 @@ public class StopSignIntersection : NodeBehavior
         return new();
     }
 
-    public override List<LaneConnection> getLaneConnections()
+    public override List<LaneConnection> GetLaneConnections()
     {
         return laneConnections.SelectMany(x => x).ToList();
     }

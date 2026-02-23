@@ -5,30 +5,30 @@ using UnityEngine;
 class Node : IComparable<Node>
 {
     // Coming from
-    public RoadNode roadNode;
+    public RoadNode FromNode;
     // Travelling on
-    public Lane lane;
+    public Lane Lane;
 
-    public Node parentNode;
-    public float f;
-    public float g;
+    public Node Parent;
+    public float F;
+    public float G;
 
     public int CompareTo(Node other)
     {
         if (other == null) return 1;
-        return f.CompareTo(other.f);
+        return F.CompareTo(other.F);
     }
 }
 
 public class RoadPath
 {
-    public Lane startingLane;
-    public Stack<LaneConnection> connections;
+    public Lane StartingLane;
+    public Stack<LaneConnection> Connections;
 }
 
-public class Astar
+public class AStar
 {
-    public static RoadPath findPath(
+    public static RoadPath FindPath(
         RoadNetwork network,
         RoadNode startNode,
         RoadNode goalNode
@@ -37,16 +37,16 @@ public class Astar
         PriorityQueue<Node> p = new();
         HashSet<Lane> vis = new();
         
-        foreach (Lane lane in network.getOutgoingLanes(startNode))
+        foreach (Lane lane in network.GetOutgoingLanes(startNode))
         {
-            float h = Vector3.Distance(goalNode.position, startNode.position);
+            float h = Vector3.Distance(goalNode.Position, startNode.Position);
             p.Insert(new Node
             {
-                roadNode = startNode,
-                lane = lane,
-                parentNode = null,
-                f = h,
-                g = 0f
+                FromNode = startNode,
+                Lane = lane,
+                Parent = null,
+                F = h,
+                G = 0f
             });
             vis.Add(lane);
         }
@@ -57,62 +57,62 @@ public class Astar
             p.Remove();
 
             // Check if the lane leads to the goal
-            if (node.lane.to == goalNode)
+            if (node.Lane.To == goalNode)
             {
-                return contructPath(node);
+                return ConstructPath(node);
             }
 
-            RoadNode conNode = node.lane.to;
-            foreach (Lane lane in network.getOutgoingLanes(conNode, node.lane))
+            RoadNode conNode = node.Lane.To;
+            foreach (Lane lane in network.GetOutgoingLanes(conNode, node.Lane))
             {
                 if (vis.Contains(lane))
                     continue;
 
                 vis.Add(lane);
-                float h = Vector3.Distance(goalNode.position, lane.from.position);
-                float g = node.g + Vector3.Distance(lane.points[0], lane.points[^1]);
+                float h = Vector3.Distance(goalNode.Position, lane.From.Position);
+                float g = node.G + Vector3.Distance(lane.Points[0], lane.Points[^1]);
                 p.Insert(new Node
                 {
-                    roadNode = conNode,
-                    lane = lane,
-                    parentNode = node,
-                    g = g,
-                    f = g + h
+                    FromNode = conNode,
+                    Lane = lane,
+                    Parent = node,
+                    G = g,
+                    F = g + h
                 });
             }
         }
 
         Debug.Log("No path found");
         return new RoadPath {
-            startingLane = null,
-            connections = new()
+            StartingLane = null,
+            Connections = new()
         };
     }
 
-    private static RoadPath contructPath(Node node)
+    private static RoadPath ConstructPath(Node node)
     {
         Stack<LaneConnection> path = new();
-        while (node.parentNode != null)
+        while (node.Parent != null)
         {
-            Lane laneFrom = node.parentNode.lane;
-            Lane laneTo = node.lane;
+            Lane laneFrom = node.Parent.Lane;
+            Lane laneTo = node.Lane;
             List<LaneConnection> connections = 
-                node.roadNode.behavior.getLaneConnections(laneFrom);
+                node.FromNode.Behavior.GetLaneConnections(laneFrom);
             foreach (LaneConnection connection in connections)
             {
-                if (connection.to == laneTo)
+                if (connection.To == laneTo)
                 {
                     path.Push(connection);
                     break;
                 }
             }
-            node = node.parentNode;
+            node = node.Parent;
         }
 
         return new RoadPath
         {
-            startingLane = node.lane,
-            connections = path
+            StartingLane = node.Lane,
+            Connections = path
         };
     }
 }
