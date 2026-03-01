@@ -6,6 +6,7 @@ public class TrafficController : MonoBehaviour
     public RoadNetwork roadNetwork;
     public GameObject carPrefab;
     public float spawnInterval = 3.0f;
+    public float minSpawnDistance = 3.0f;
 
     private float timer = 0f;
 
@@ -34,12 +35,12 @@ public class TrafficController : MonoBehaviour
 
         if (timer >= spawnInterval)
         {
-            timer = 0f;
-            SpawnCar();
+            if (SpawnCar())
+                timer = 0f;
         }
     }
 
-    void SpawnCar()
+    bool SpawnCar()
     {
         int randomIndex = Random.Range(0, spawnConfigs.Length);
         var (startId, goalId) = spawnConfigs[randomIndex];
@@ -50,18 +51,21 @@ public class TrafficController : MonoBehaviour
         if (startNode == null || goalNode == null)
         {
             Debug.LogWarning($"Failed to find nodes: start={startId}, goal={goalId}");
-            return;
+            return false;
         }
 
         List<Lane> outgoingLanes = roadNetwork.GetOutgoingLanes(startNode);
         if (outgoingLanes.Count == 0)
         {
             Debug.LogWarning($"No outgoing lanes from node {startId}");
-            return;
+            return false;
         }
 
         Lane startLane = outgoingLanes[0];
         Vector3 spawnPosition = startLane.Points[0];
+
+        if (IsSpawnPositionBlocked(startLane, spawnPosition))
+            return false;
         
         Vector3 laneDirection = Vector3.forward;
         if (startLane.Points.Count >= 2)
@@ -77,7 +81,7 @@ public class TrafficController : MonoBehaviour
         {
             Debug.LogWarning("Car prefab does not have a Car component");
             Destroy(carObj);
-            return;
+            return false;
         }
 
         car.roadNetwork = roadNetwork;
@@ -85,5 +89,20 @@ public class TrafficController : MonoBehaviour
         car.goal = goalNode;
         car.position = spawnPosition;
         car.direction = laneDirection;
+        return true;
+    }
+
+    bool IsSpawnPositionBlocked(Lane lane, Vector3 spawnPosition)
+    {
+        foreach (Car laneCar in lane.CarsInLane.Values)
+        {
+            if (laneCar == null)
+                continue;
+
+            if (Vector3.Distance(laneCar.position, spawnPosition) < minSpawnDistance)
+                return true;
+        }
+
+        return false;
     }
 }

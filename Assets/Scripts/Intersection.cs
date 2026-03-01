@@ -15,11 +15,28 @@ public enum RoadConnection
     BotOut
 }
 
-public enum CarAction
+public abstract class CarAction {}
+
+public sealed class Drive : CarAction
 {
-    Drive,
-    Wait
+    public float Speed { get; }
+
+    public Drive(float speed)
+    {
+        Speed = speed;
+    }
 }
+
+public sealed class Wait : CarAction
+{
+    public Vector3 AtPos { get; }
+
+    public Wait(Vector3 atPos)
+    {
+        AtPos = atPos;
+    }
+}
+
 
 public abstract class NodeBehavior
 {
@@ -96,7 +113,7 @@ public class Endpoint : NodeBehavior
 
     public override CarAction GetCarAction(Car car)
     {
-        return CarAction.Drive;
+        return new Drive(SpeedLimit);
     }
 
     public override List<LaneConnection> GetLaneConnections(Lane lane)
@@ -115,20 +132,18 @@ public class Endpoint : NodeBehavior
     }
 }
 
-public class StopSignIntersection : NodeBehavior
+public abstract class SharedGeometryIntersection : NodeBehavior
 {
-    Vector3 position;
+    readonly Vector3 position;
 
     // Connection positions, indexed with RoadConnection
-    Vector3[] cPos = new Vector3[Enum.GetValues(typeof(RoadConnection)).Length];
+    readonly Vector3[] cPos = new Vector3[Enum.GetValues(typeof(RoadConnection)).Length];
 
     // LaneConnections for each connected incoming lane
-    List<LaneConnection>[] laneConnections = 
+    readonly List<LaneConnection>[] laneConnections = 
         new List<LaneConnection>[Enum.GetValues(typeof(RoadConnection)).Length];
 
-    public override float SpeedLimit => 2.0f;
-
-    public StopSignIntersection(Vector3 position)
+    protected SharedGeometryIntersection(Vector3 position)
     {
         this.position = position;
 
@@ -193,11 +208,6 @@ public class StopSignIntersection : NodeBehavior
         return position;
     }
 
-    List<RoadConnection> GetValidOutgoing(RoadConnection from)
-    {
-        return new();
-    }
-
     public override void UpdateLaneConnections()
     {
         for (int i = 0; i < laneConnections.Length; i++) laneConnections[i].Clear();
@@ -246,7 +256,7 @@ public class StopSignIntersection : NodeBehavior
 
     public override CarAction GetCarAction(Car car)
     {
-        return CarAction.Drive;
+        return new Drive(SpeedLimit);
     }
 
     public override List<LaneConnection> GetLaneConnections(Lane lane)
@@ -263,5 +273,103 @@ public class StopSignIntersection : NodeBehavior
     public override List<LaneConnection> GetLaneConnections()
     {
         return laneConnections.SelectMany(x => x).ToList();
+    }
+}
+
+public class StopSignIntersection : SharedGeometryIntersection
+{
+    public override float SpeedLimit => 2.0f;
+
+    public StopSignIntersection(Vector3 position) : base(position)
+    {
+    }
+
+    public override CarAction GetCarAction(Car car)
+    {
+        return new Drive(SpeedLimit);
+    }
+}
+
+public class TrafficLightIntersection : SharedGeometryIntersection
+{
+    enum LightPhase
+    {
+        NorthSouthGreen,
+        NorthSouthYellow,
+        EastWestGreen,
+        EastWestYellow
+    }
+
+    public override float SpeedLimit => 2.0f;
+
+    readonly float greenDuration = 8f;
+    readonly float yellowDuration = 2f;
+    readonly float phaseOffset;
+
+    public TrafficLightIntersection(Vector3 position) : base(position)
+    {
+        phaseOffset = UnityEngine.Random.Range(0f, 6f);
+    }
+
+    public override CarAction GetCarAction(Car car)
+    {
+        LightPhase phase = GetCurrentPhase();
+        bool northSouthOpen = phase == LightPhase.NorthSouthGreen || phase == LightPhase.NorthSouthYellow;
+        bool eastWestOpen = phase == LightPhase.EastWestGreen || phase == LightPhase.EastWestYellow;
+
+        bool carIsNorthSouth = Mathf.Abs(car.direction.z) >= Mathf.Abs(car.direction.x);
+        bool hasGreen = carIsNorthSouth ? northSouthOpen : eastWestOpen;
+
+        if (hasGreen || car.inIntersection)
+            return new Drive(SpeedLimit);
+
+        RoadConnection stopConnection = GetClosestIncomingConnection(car.position);
+        return new Wait(GetPositionOfConnection(stopConnection));
+    }
+
+    LightPhase GetCurrentPhase()
+    {
+        float fullCycle = (greenDuration + yellowDuration) * 2f;
+        float t = (Time.time + phaseOffset) % fullCycle;
+
+        if (t < greenDuration)
+            return LightPhase.NorthSouthGreen;
+
+        t -= greenDuration;
+        if (t < yellowDuration)
+            return LightPhase.NorthSouthYellow;
+
+        t -= yellowDuration;
+        if (t < greenDuration)
+            return LightPhase.EastWestGreen;
+
+        return LightPhase.EastWestYellow;
+    }
+
+    RoadConnection GetClosestIncomingConnection(Vector3 carPosition)
+    {
+        RoadConnection[] incoming =
+        {
+            RoadConnection.TopIn,
+            RoadConnection.BotIn,
+            RoadConnection.LeftIn,
+            RoadConnection.RightIn,
+        };
+
+        RoadConnection closest = incoming[0];
+        float closestDistance = float.MaxValue;
+
+        foreach (RoadConnection connection in incoming)
+        {
+            Vector3 point = GetPositionOfConnection(connection);
+            float distance = Vector3.Distance(carPosition, point);
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                closest = connection;
+            }
+        }
+
+        return closest;
     }
 }

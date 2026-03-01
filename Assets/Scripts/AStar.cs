@@ -83,10 +83,7 @@ public class AStar
         }
 
         Debug.Log("No path found");
-        return new RoadPath {
-            StartingLane = null,
-            Connections = new()
-        };
+        return null;
     }
 
     private static RoadPath ConstructPath(Node node)

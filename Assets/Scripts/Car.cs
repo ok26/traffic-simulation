@@ -14,11 +14,7 @@ public class Car : MonoBehaviour
     public RoadNode startPoint;
     public RoadNode goal;
 
-    RoadPath roadPath;
-    Lane currentLane;
-    NodeBehavior currentIntersection;
-    CarState carState;
-
+    CarNavigator carNavigator;
     PurePursuit purePursuit;
     IDM idm;
 
@@ -29,91 +25,55 @@ public class Car : MonoBehaviour
     public float steeringAngle = 0.0f;
     public float maxSpeed = 5f;
 
-    public float SpeedLimit
-    {
-        get
-        {
-            switch (carState)
-            {
-                case CarState.Lane:
-                return currentLane != null ? currentLane.Segment.SpeedLimit : 0f;
-                case CarState.Intersection:
-                return currentIntersection != null ? currentIntersection.SpeedLimit : 0f;
-                case CarState.Lost:
-                return 0f;
-            }
-            return 0f;
-        }
-    }
+    public Vector3 BackBumperPosition => position - (wheelbase / 2) * direction;
+    public Vector3 FrontBumberPosition => position + (wheelbase / 2) * direction;
+    public bool inIntersection => carNavigator.inIntersection;
 
     void Start()
     {
         if (roadNetwork == null || startPoint == null || goal == null) 
             return;
 
-        roadPath = AStar.FindPath(roadNetwork, startPoint, goal);
-        if (roadPath == null)
-            return;
-
-        currentLane = roadPath.StartingLane;
-        carState = CarState.Lane;
-        purePursuit = new PurePursuit();
-        idm = new IDM();
+        carNavigator = new(this, roadNetwork, startPoint, goal);
+        purePursuit = new();
+        idm = new();
     }
 
     void Update()
     {
-        switch (carState)
-        {
-            case CarState.Lane:
-            FollowLane();
-            break;
-            case CarState.Intersection:
-            FollowIntersection();
-            break;
-            case CarState.Lost:
-            // Placeholder might delete
-            break;
-        }
-    }
+        if (carNavigator == null || purePursuit == null || idm == null)
+            return;
 
-    void FollowIntersection()
-    {
-        if (currentIntersection == null)
+        bool reachedGoal = carNavigator.UpdateState();
+
+        if (reachedGoal)
         {
-            carState = CarState.Lost;
+            Destroy();
             return;
         }
 
-        CarAction action = currentIntersection.GetCarAction(this);
+        (float speedLimit, 
+        float distanceToNextCar, 
+        float velocityOfNextCar) = carNavigator.GetRoadInfo();
 
-        switch (action)
-        {
-            case CarAction.Drive:
-            FollowPath(roadPath.Connections.Peek().TransitionCurve);
-            break;
-            case CarAction.Wait:
-            break;
-        }
-    }
+        (List<Vector3> upcomingPath,
+        int closestPointIndex) = carNavigator.GetUpcomingPath();
 
-    void FollowLane()
-    {
-        if (currentLane == null)
-        {
-            carState = CarState.Lost;
-            return;
-        }
+        float acceleration = idm.CalculateCarAcceleration(
+            this, 
+            speedLimit, 
+            distanceToNextCar,
+            velocityOfNextCar);
 
-        FollowPath(currentLane.Points);
-    }
+        if (float.IsNaN(acceleration) || float.IsInfinity(acceleration))
+            acceleration = 0f;
 
-    void FollowPath(List<Vector3> path)
-    {
-        steeringAngle = purePursuit.CalculateSteeringAngle(this, path);
-        velocity += idm.CalculateCarAcceleration(this, SpeedLimit) * Time.deltaTime;
-        
-        velocity = Mathf.Clamp(velocity, -maxSpeed, maxSpeed);
+        steeringAngle = purePursuit.CalculateSteeringAngle(this, upcomingPath, closestPointIndex);
+        velocity += acceleration * Time.deltaTime;
+        velocity = Mathf.Clamp(velocity, 0f, maxSpeed);
+
+        if (float.IsNaN(velocity) || float.IsInfinity(velocity))
+            velocity = 0f;
 
         float deltaRad = Mathf.Deg2Rad * steeringAngle;
         float angularVelocity = (velocity / wheelbase) * Mathf.Tan(deltaRad);
@@ -128,37 +88,25 @@ public class Car : MonoBehaviour
 
         position += direction * velocity * Time.deltaTime;
 
+        if (!float.IsFinite(position.x) || !float.IsFinite(position.y) || !float.IsFinite(position.z))
+        {
+            Destroy();
+            return;
+        }
+
         transform.position = position;
         if (direction != Vector3.zero) 
             transform.rotation = Quaternion.LookRotation(direction, Vector3.up); 
-
-        // Change (probable need to update how to detect when should change lane)
-        if (Vector3.Distance(position, path[^1]) < 0.2f)
-        {
-            if (roadPath.Connections.Count == 0)
-            {
-                Destroy(gameObject);
-            }
-            else
-            {
-                UpdatePath();
-            }
-        }   
     }
 
-    void UpdatePath()
+    public void Destroy()
     {
-        switch (carState)
-        {
-            case CarState.Lane:
-            carState = CarState.Intersection;
-            currentIntersection = roadPath.Connections.Peek().Behavior;
-            break;
-            case CarState.Intersection:
-            carState = CarState.Lane;
-            currentLane = roadPath.Connections.Peek().To;
-            roadPath.Connections.Pop();
-            break;
-        }
+        carNavigator?.OnCarDestroyed();
+        Destroy(gameObject);
+    }
+
+    void OnDestroy()
+    {
+        carNavigator?.OnCarDestroyed();
     }
 }
