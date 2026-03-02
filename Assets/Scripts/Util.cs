@@ -111,6 +111,22 @@ public class Util
         return points;
     }
 
+    public static List<Vector3> GenerateQuadraticBezier(Vector3 start, Vector3 control, Vector3 end) {
+        var points = new List<Vector3>();
+        
+        int steps = Mathf.CeilToInt(Vector3.Distance(start, end) / Constants.pointSpacing);
+
+        for (int i = 0; i <= steps; i++)
+        {
+            float t = (float)i / steps;
+            Vector3 Q0 = Vector3.Lerp(start, control, t);
+            Vector3 Q1 = Vector3.Lerp(control, end, t);
+            points.Add(Vector3.Lerp(Q0, Q1, t));
+        }
+
+        return points;
+    }
+
     public static List<Vector3> GenerateLine(
         Vector3 start,
         Vector3 end)

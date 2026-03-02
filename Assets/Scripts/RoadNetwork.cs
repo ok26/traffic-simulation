@@ -53,6 +53,9 @@ public class Lane
 
     public void SetPoints(Vector3 posFrom, Vector3 posTo)
     {
+        // float strength = 3f; 
+        // Vector3 bezierControlPoint = posFrom + (posTo - posFrom) * 0.5f + Vector3.Cross((posTo - posFrom).normalized, Vector3.up) * strength; 
+        // Points = Util.GenerateQuadraticBezier(posFrom, bezierControlPoint, posTo);
         Points = Util.GenerateLine(posFrom, posTo);
     }
 }

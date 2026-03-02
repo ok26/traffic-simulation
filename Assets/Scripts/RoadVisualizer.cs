@@ -5,18 +5,172 @@ public class RoadVisualizer : MonoBehaviour
 {
     public RoadNetwork network;
     public float yOffset = 0.05f;
+    public Material RoadMaterial;
+
+    void Start()
+    {
+        if (network == null) return;
+
+        DrawLanes();
+        DrawNodes();
+    }
+
+    void DrawNodes()
+    {
+        foreach (var node in network.GetNodes())
+        {
+            switch (node.Behavior)
+            {
+                case Endpoint:
+                DrawEndpoint(node);
+                    break;
+                case StopSignIntersection:
+                DrawStopSignIntersection(node);
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+
+    void DrawEndpoint(RoadNode node)
+    {
+        float width = Constants.laneWidth/4f;
+        GameObject endpointObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        endpointObj.name = $"Endpoint_{node.Id}";
+        endpointObj.transform.SetParent(transform);
+        endpointObj.transform.position = node.Position + Vector3.down * yOffset;
+        endpointObj.transform.localScale = new Vector3(width, 0.1f, width);
+        var renderer = endpointObj.GetComponent<MeshRenderer>();
+        renderer.sharedMaterial = RoadMaterial;
+    }
+
+    void DrawStopSignIntersection(RoadNode node)
+    {
+        float width = Constants.laneWidth/4f;
+        GameObject intersectionObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        intersectionObj.name = $"StopSignIntersection_{node.Id}";
+        intersectionObj.transform.SetParent(transform);
+        intersectionObj.transform.position = node.Position + Vector3.down * yOffset;
+        intersectionObj.transform.localScale = new Vector3(width, 0.1f, width);
+        var renderer = intersectionObj.GetComponent<MeshRenderer>();
+        renderer.sharedMaterial = RoadMaterial;
+    }
+
+    Mesh GenerateSegmentMesh(RoadSegment segment)
+    {
+        Mesh mesh = new();
+        List<Vector3> vertices = new();
+        List<int> triangles = new();
+        List<Vector2> uvs = new();
+
+        float width = Constants.laneWidth;
+        float totalLength = 0f; // for UV mapping
+
+        foreach (var lane in segment.Lanes)
+        {
+            if (lane.Points == null || lane.Points.Count < 2)
+                continue;
+
+            // Setup first two vertices
+            Vector3 perp = Vector3.Cross((lane.Points[1] - lane.Points[0]).normalized, Vector3.up);
+            Vector3 v0 = lane.Points[0] + perp * (width / 2f) + Vector3.down*yOffset;
+            Vector3 v1 = lane.Points[0] - perp * (width / 2f) + Vector3.down*yOffset;
+
+            for (int i = 1; i < lane.Points.Count - 1; i++)
+            {
+                Vector3 p1 = lane.Points[i];
+                Vector3 p2 = lane.Points[i+1];
+                Vector3 direction = (p2 - p1).normalized;
+                perp = Vector3.Cross(direction, Vector3.up);
+                /*  Vertices of on part of the lane mesh
+                <--width-->
+
+                v2--p2--v3
+                | \     |
+                |   \   |
+                |     \ |
+                v0--p1--v1
+                */
+                Vector3 v2 = p2 + perp * (width / 2f) + Vector3.down*yOffset;
+                Vector3 v3 = p2 - perp * (width / 2f) + Vector3.down*yOffset;
+                int index = vertices.Count;
+
+                vertices.Add(v0);
+                vertices.Add(v1);
+                vertices.Add(v2);
+                vertices.Add(v3);
+
+                // Traingels from the vertices indices
+                triangles.Add(index + 0);
+                triangles.Add(index + 2);
+                triangles.Add(index + 1);
+
+                triangles.Add(index + 2);
+                triangles.Add(index + 3);
+                triangles.Add(index + 1);
+
+                // Textures
+                float partLength = Vector3.Distance(p1, p2);
+
+                float vStart = totalLength;
+                float vEnd = totalLength + partLength;
+
+                // Tile factor 
+                float textureTiling = 0.75f; // increase for more repetition
+
+                uvs.Add(new Vector2(0, vStart * textureTiling));
+                uvs.Add(new Vector2(1, vStart * textureTiling));
+                uvs.Add(new Vector2(0, vEnd * textureTiling));
+                uvs.Add(new Vector2(1, vEnd * textureTiling));
+
+                totalLength += partLength;
+
+                v0 = v2;
+                v1 = v3;
+            }                                     
+            
+        } 
+        mesh.SetVertices(vertices);
+        mesh.SetTriangles(triangles, 0);
+        mesh.SetUVs(0, uvs);
+
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+
+        return mesh;
+    }
+    void DrawLanes()
+    {
+        int segCount = 0; // count to id segments
+        foreach (var segment in network.GetSegments())
+        { 
+            GameObject segmentObj = new GameObject($"Segment_{segCount}");
+            segCount++;
+            segmentObj.transform.SetParent(transform);
+
+            var meshRenderer = segmentObj.AddComponent<MeshRenderer>();        
+            var meshFilter = segmentObj.AddComponent<MeshFilter>();
+            meshRenderer.sharedMaterial = RoadMaterial;
+
+            Mesh mesh = GenerateSegmentMesh(segment);
+
+            meshFilter.mesh = mesh;
+        }       
+    }
 
     void OnDrawGizmos()
     {
         if (network == null) return;
 
-        DrawLanes();
-        DrawLaneConnections();
-        DrawNodes();
+        DrawLanesDebug();
+        DrawLaneConnectionsDebug();
+        DrawNodesDebug();
     }
 
-    void DrawLanes()
+    void DrawLanesDebug()
     {
+        /*Debugging*/
         Gizmos.color = Color.white;
 
         foreach (var segment in network.GetSegments())
@@ -39,8 +193,9 @@ public class RoadVisualizer : MonoBehaviour
         }
     }
 
-    void DrawLaneConnections()
+    void DrawLaneConnectionsDebug()
     {
+        /*Debugging*/
         Gizmos.color = Color.green;
 
         foreach (var node in network.GetNodes())
@@ -64,8 +219,9 @@ public class RoadVisualizer : MonoBehaviour
         }
     }
 
-    void DrawNodes()
+    void DrawNodesDebug()
     {
+        /*Debugging*/
         Gizmos.color = Color.red;
 
         foreach (var node in network.GetNodes())
