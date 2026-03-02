@@ -458,7 +458,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TrafficController
   roadNetwork: {fileID: 593271310}
   carPrefab: {fileID: 2911748666857576481, guid: 4465414f38c6b40e8b3ef441ee24f812, type: 3}
-  spawnInterval: 1.5
+  spawnInterval: 2
+  minSpawnDistance: 3
 --- !u!4 &705456440
 Transform:
   m_ObjectHideFlags: 0

@@ -43,6 +43,7 @@ public class Lane
     public RoadNode From;
     public RoadNode To;
     public List<Vector3> Points;
+    public SortedList<int, Car> CarsInLane = new();
 
     public Lane(RoadSegment segment, RoadNode from, RoadNode to)
     {
@@ -66,6 +67,7 @@ public class LaneConnection
     public Lane To;
     public List<Vector3> TransitionCurve;
     public NodeBehavior Behavior;
+    public SortedList<int, Car> CarsInConnection = new();
 
     public LaneConnection(
         Lane from, 
@@ -102,15 +104,15 @@ public class RoadNetwork : MonoBehaviour
         RoadNode endpointC = new RoadNode(2, new Endpoint(new Vector3(0f, 0f, -15f)));
         RoadNode endpointD = new RoadNode(3, new Endpoint(new Vector3(0f, 0f, 15f)));
         
-        RoadNode stopSignIntersection = new RoadNode(
+        RoadNode trafficLightIntersection = new RoadNode(
             4, 
-            new StopSignIntersection(Vector3.zero)
+            new TrafficLightIntersection(Vector3.zero)
         );
 
-        RoadSegment westRoad = new RoadSegment(endpointA, stopSignIntersection, 4);
-        RoadSegment eastRoad = new RoadSegment(endpointB, stopSignIntersection, 4);
-        RoadSegment southRoad = new RoadSegment(endpointC, stopSignIntersection, 4);
-        RoadSegment northRoad = new RoadSegment(endpointD, stopSignIntersection, 4);
+        RoadSegment westRoad = new RoadSegment(endpointA, trafficLightIntersection, 4);
+        RoadSegment eastRoad = new RoadSegment(endpointB, trafficLightIntersection, 4);
+        RoadSegment southRoad = new RoadSegment(endpointC, trafficLightIntersection, 4);
+        RoadSegment northRoad = new RoadSegment(endpointD, trafficLightIntersection, 4);
 
         // Snyggaste kod någonsin skrivit
         var roadConfigs = new (RoadNode endpoint, RoadSegment segment, RoadConnection endpointOut, RoadConnection intersectionIn, RoadConnection intersectionOut, RoadConnection endpointIn)[]
@@ -124,30 +126,30 @@ public class RoadNetwork : MonoBehaviour
         foreach (var (endpoint, segment, endpointOut, intersectionIn, intersectionOut, endpointIn) in roadConfigs)
         {
             // Lane going toward intersection
-            Lane toIntersection = new Lane(segment, endpoint, stopSignIntersection);
+            Lane toIntersection = new Lane(segment, endpoint, trafficLightIntersection);
             toIntersection.SetPoints(
                 endpoint.Behavior.GetPositionOfConnection(endpointOut),
-                stopSignIntersection.Behavior.GetPositionOfConnection(intersectionIn)
+                trafficLightIntersection.Behavior.GetPositionOfConnection(intersectionIn)
             );
-            stopSignIntersection.Behavior.ConnectLane(toIntersection, intersectionIn);
+            trafficLightIntersection.Behavior.ConnectLane(toIntersection, intersectionIn);
             endpoint.Behavior.ConnectLane(toIntersection, endpointOut);
             segment.Lanes.Add(toIntersection);
 
             // Lane going away from intersection
-            Lane fromIntersection = new Lane(segment, stopSignIntersection, endpoint);
+            Lane fromIntersection = new Lane(segment, trafficLightIntersection, endpoint);
             fromIntersection.SetPoints(
-                stopSignIntersection.Behavior.GetPositionOfConnection(intersectionOut),
+                trafficLightIntersection.Behavior.GetPositionOfConnection(intersectionOut),
                 endpoint.Behavior.GetPositionOfConnection(endpointIn)
             );
-            stopSignIntersection.Behavior.ConnectLane(fromIntersection, intersectionOut);
+            trafficLightIntersection.Behavior.ConnectLane(fromIntersection, intersectionOut);
             endpoint.Behavior.ConnectLane(fromIntersection, endpointIn);
             segment.Lanes.Add(fromIntersection);
 
             endpoint.ConnectedSegments.Add(segment);
-            stopSignIntersection.ConnectedSegments.Add(segment);
+            trafficLightIntersection.ConnectedSegments.Add(segment);
         }
 
-        stopSignIntersection.Behavior.UpdateLaneConnections();
+        trafficLightIntersection.Behavior.UpdateLaneConnections();
 
         roadSegments.Add(westRoad);
         roadSegments.Add(eastRoad);
@@ -158,7 +160,7 @@ public class RoadNetwork : MonoBehaviour
         roadNodes.Add(endpointB.Id, endpointB);
         roadNodes.Add(endpointC.Id, endpointC);
         roadNodes.Add(endpointD.Id, endpointD);
-        roadNodes.Add(stopSignIntersection.Id, stopSignIntersection);
+        roadNodes.Add(trafficLightIntersection.Id, trafficLightIntersection);
     }
 
     public List<Lane> GetOutgoingLanes(RoadNode roadNode, Lane incomingLane = null)

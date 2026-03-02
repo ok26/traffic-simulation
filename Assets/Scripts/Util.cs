@@ -151,14 +151,14 @@ public class Util
         float distance) 
         {
         int closestPointIdx = 0;
-        float closestsDistance = Vector3.Distance(from, points[0]);
+        float closestDistance = Vector3.Distance(from, points[0]);
         for (int i = 1; i < points.Count; i++)
         {
             Vector3 point = points[i];
             float distanceToPoint = Vector3.Distance(from, point);
-            if (distanceToPoint < closestsDistance)
+            if (distanceToPoint < closestDistance)
             {   
-                closestsDistance = distanceToPoint;
+                closestDistance = distanceToPoint;
                 closestPointIdx = i;
             }   
         }
