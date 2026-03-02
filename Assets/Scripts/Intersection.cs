@@ -41,10 +41,9 @@ public sealed class Wait : CarAction
 public abstract class NodeBehavior
 {
     protected Dictionary<RoadConnection, Lane> connections = new();
-    public abstract float SpeedLimit { get; }
     public abstract Vector3 GetPositionOfConnection(RoadConnection connection);
     public abstract Vector3 GetPosition();
-    public abstract CarAction GetCarAction(Car car);
+    public abstract CarAction GetCarAction(Car car, LaneConnection laneConnection, float incomingSpeedLimit);
     public abstract void UpdateLaneConnections();
     public abstract List<LaneConnection> GetLaneConnections(Lane lane);
 
@@ -72,7 +71,6 @@ public abstract class NodeBehavior
 public class Endpoint : NodeBehavior
 {
     Vector3 position;
-    public override float SpeedLimit => 0f;
 
     public Endpoint(Vector3 position)
     {
@@ -111,9 +109,9 @@ public class Endpoint : NodeBehavior
         return position;
     }
 
-    public override CarAction GetCarAction(Car car)
+    public override CarAction GetCarAction(Car car, LaneConnection laneConnection, float incomingSpeedLimit)
     {
-        return new Drive(SpeedLimit);
+        return new Drive(4.0f);
     }
 
     public override List<LaneConnection> GetLaneConnections(Lane lane)
@@ -214,13 +212,13 @@ public abstract class SharedGeometryIntersection : NodeBehavior
 
         var innerConnectionCurves = new (RoadConnection connectionIn, RoadConnection connectionOut, bool clockwiseCurve)[]
         {
-            (RoadConnection.TopIn, RoadConnection.RightOut, false),
-            (RoadConnection.TopIn, RoadConnection.LeftOut, true),
-            (RoadConnection.BotIn, RoadConnection.RightOut, true),
-            (RoadConnection.BotIn, RoadConnection.LeftOut, false),
-            (RoadConnection.LeftIn, RoadConnection.TopOut, false),
-            (RoadConnection.LeftIn, RoadConnection.BotOut, true),
-            (RoadConnection.RightIn, RoadConnection.BotOut, false),
+            (RoadConnection.TopIn, RoadConnection.RightOut, false), //Left
+            (RoadConnection.TopIn, RoadConnection.LeftOut, true), // Right
+            (RoadConnection.BotIn, RoadConnection.RightOut, true), // Right
+            (RoadConnection.BotIn, RoadConnection.LeftOut, false), // Left
+            (RoadConnection.LeftIn, RoadConnection.TopOut, false), // Left
+            (RoadConnection.LeftIn, RoadConnection.BotOut, true), // Right
+            (RoadConnection.RightIn, RoadConnection.BotOut, false), // 
             (RoadConnection.RightIn, RoadConnection.TopOut, true),
         };
 
@@ -233,13 +231,23 @@ public abstract class SharedGeometryIntersection : NodeBehavior
         };
 
 
+        // Reasonable speeds in different turns
+        float leftTurnSpeedLimit = 3.0f;
+        float rightTurnSpeedLimit = 2.0f;
+        float straightSpeedLimit = 4.0f;
+
         foreach (var (connectionIn, connectionOut, clockwiseCurve) in innerConnectionCurves)
         {
+
+            // CW/CCW turns also correspond to Right/Left turns
+            float speedLimit = clockwiseCurve ? rightTurnSpeedLimit : leftTurnSpeedLimit;
+
             laneConnections[(int)connectionIn].Add(new LaneConnection(
                 connections[connectionIn],
                 connections[connectionOut],
                 Util.GenerateArc(cPos[(int)connectionIn], cPos[(int)connectionOut], clockwiseCurve),
-                this
+                this,
+                speedLimit
             ));
         }
 
@@ -249,14 +257,10 @@ public abstract class SharedGeometryIntersection : NodeBehavior
                 connections[connectionIn],
                 connections[connectionOut],
                 Util.GenerateLine(cPos[(int)connectionIn], cPos[(int)connectionOut]),
-                this
+                this,
+                straightSpeedLimit
             ));
         }
-    }
-
-    public override CarAction GetCarAction(Car car)
-    {
-        return new Drive(SpeedLimit);
     }
 
     public override List<LaneConnection> GetLaneConnections(Lane lane)
@@ -278,15 +282,14 @@ public abstract class SharedGeometryIntersection : NodeBehavior
 
 public class StopSignIntersection : SharedGeometryIntersection
 {
-    public override float SpeedLimit => 2.0f;
 
     public StopSignIntersection(Vector3 position) : base(position)
     {
     }
 
-    public override CarAction GetCarAction(Car car)
+    public override CarAction GetCarAction(Car car, LaneConnection laneConnection, float incomingSpeedLimit)
     {
-        return new Drive(SpeedLimit);
+        return new Drive(2.0f);
     }
 }
 
@@ -300,31 +303,45 @@ public class TrafficLightIntersection : SharedGeometryIntersection
         EastWestYellow
     }
 
-    public override float SpeedLimit => 2.0f;
-
     readonly float greenDuration = 8f;
-    readonly float yellowDuration = 2f;
+    readonly float yellowDuration = 1f; // Will try to stop for yellow
     readonly float phaseOffset;
+    readonly float comfortableRedStopDecel = 3.0f;
+    readonly float stopBufferDistance = 0.75f;
 
     public TrafficLightIntersection(Vector3 position) : base(position)
     {
         phaseOffset = UnityEngine.Random.Range(0f, 6f);
     }
 
-    public override CarAction GetCarAction(Car car)
+    public override CarAction GetCarAction(Car car, LaneConnection laneConnection, float incomingSpeedLimit)
     {
         LightPhase phase = GetCurrentPhase();
-        bool northSouthOpen = phase == LightPhase.NorthSouthGreen || phase == LightPhase.NorthSouthYellow;
-        bool eastWestOpen = phase == LightPhase.EastWestGreen || phase == LightPhase.EastWestYellow;
+        bool northSouthOpen = phase == LightPhase.NorthSouthGreen;
+        bool eastWestOpen = phase == LightPhase.EastWestGreen;
 
         bool carIsNorthSouth = Mathf.Abs(car.direction.z) >= Mathf.Abs(car.direction.x);
         bool hasGreen = carIsNorthSouth ? northSouthOpen : eastWestOpen;
+        RoadConnection connection = GetClosestIncomingConnection(car.position);
+        float distanceToConnection = Vector3.Distance(car.FrontBumberPosition, GetPositionOfConnection(connection));
 
         if (hasGreen || car.inIntersection)
-            return new Drive(SpeedLimit);
+        {
+            float reactionDistance = Mathf.Max(0.1f, 2.0f * car.velocity);
+            float k = Mathf.Max(0.0f, 1.0f - (distanceToConnection / reactionDistance));
+            float speedLimit = car.inIntersection ?
+                laneConnection.SpeedLimit :
+                Mathf.Lerp(incomingSpeedLimit, laneConnection.SpeedLimit, k);
+            return new Drive(speedLimit);
+        }
 
-        RoadConnection stopConnection = GetClosestIncomingConnection(car.position);
-        return new Wait(GetPositionOfConnection(stopConnection));
+        float requiredStopDistance = (car.velocity * car.velocity) / (2f * comfortableRedStopDecel) + stopBufferDistance;
+        bool tooLateToStopComfortably = distanceToConnection <= requiredStopDistance;
+
+        if (tooLateToStopComfortably)
+            return new Drive(laneConnection.SpeedLimit);
+
+        return new Wait(GetPositionOfConnection(connection));
     }
 
     LightPhase GetCurrentPhase()

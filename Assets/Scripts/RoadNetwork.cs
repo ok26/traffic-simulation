@@ -55,7 +55,7 @@ public class Lane
     public void SetPoints(Vector3 posFrom, Vector3 posTo)
     {
         // float strength = 3f; 
-        // Vector3 bezierControlPoint = posFrom + (posTo - posFrom) * 0.5f + Vector3.Cross((posTo - posFrom).normalized, Vector3.up) * strength; 
+        // Vector3 bezierControlPoint = posFrom + (posTo - posFrom) * 0.5f - Vector3.Cross((posTo - posFrom).normalized, Vector3.up) * strength; 
         // Points = Util.GenerateQuadraticBezier(posFrom, bezierControlPoint, posTo);
         Points = Util.GenerateLine(posFrom, posTo);
     }
@@ -68,17 +68,20 @@ public class LaneConnection
     public List<Vector3> TransitionCurve;
     public NodeBehavior Behavior;
     public SortedList<int, Car> CarsInConnection = new();
+    public float SpeedLimit;
 
     public LaneConnection(
         Lane from, 
         Lane to, 
         List<Vector3> transitionCurve, 
-        NodeBehavior behavior)
+        NodeBehavior behavior,
+        float speedLimit)
     {
         From = from;
         To = to;
         TransitionCurve = transitionCurve;
         Behavior = behavior;
+        SpeedLimit = speedLimit;
     }
 }
 

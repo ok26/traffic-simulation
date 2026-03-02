@@ -3,7 +3,8 @@ using UnityEngine;
 public class IDM
 {
     readonly float maxAcceleration = 1.0f;
-    readonly float targetDeceleration = 1.0f;
+    readonly float targetDeceleration = 0.5f;
+    readonly float maxDeceleration = 5.0f;
     readonly float minimumGapBetweenCars = 0.5f;
     readonly float minimumTimeToCar = 1.0f;
     readonly float delta = 4.0f;
@@ -21,7 +22,7 @@ public class IDM
             (car.velocity * deltaVelocity) / (2 * Mathf.Sqrt(maxAcceleration * targetDeceleration));
         float interactionTerm = maxAcceleration * Mathf.Pow(sStar / safeDistanceToNextCar, 2);
         float freeRoadTerm = maxAcceleration * (1.0f - Mathf.Pow(car.velocity / safeSpeedLimit, delta));
-
-        return freeRoadTerm - interactionTerm;
+        float acceleration = freeRoadTerm - interactionTerm;
+        return Mathf.Clamp(acceleration, -maxDeceleration, maxAcceleration);
     }
 }
