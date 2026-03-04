@@ -48,7 +48,7 @@ public class CarNavigator
                 case CarState.Lane:
                 return currentLane != null ? currentLane.Segment.SpeedLimit : 0f;
                 case CarState.Intersection:
-                return currentIntersection != null ? currentIntersection.SpeedLimit : 0f;
+                return currentIntersection != null ? carPath.Connections.Peek().SpeedLimit : 0f;
                 case CarState.Lost:
                 return 0f;
             }
@@ -225,7 +225,8 @@ public class CarNavigator
         if (carPath.Connections.Count == 0)
             return (SpeedLimit, 100f, SpeedLimit);
 
-        CarAction action = carPath.Connections.Peek().Behavior.GetCarAction(car);
+        LaneConnection laneConnection = carPath.Connections.Peek();
+        CarAction action = laneConnection.Behavior.GetCarAction(car, laneConnection, SpeedLimit);
         switch (action)
         {
             case Drive drive:
@@ -241,7 +242,8 @@ public class CarNavigator
     // Helper GetRoadInfo
     (float, float, float) getRoadInfoIntersection(Car nextCar)
     {
-        CarAction action = carPath.Connections.Peek().Behavior.GetCarAction(car);
+        LaneConnection laneConnection = carPath.Connections.Peek();
+        CarAction action = laneConnection.Behavior.GetCarAction(car, laneConnection, SpeedLimit);
         switch (action)
         {
             case Drive drive:
