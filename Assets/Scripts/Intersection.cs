@@ -3,18 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-public enum RoadConnection
-{
-    TopIn,
-    TopOut,
-    LeftIn,
-    LeftOut,
-    RightIn,
-    RightOut,
-    BotIn,
-    BotOut
-}
-
 public abstract class CarAction {}
 
 public sealed class Drive : CarAction
@@ -40,17 +28,18 @@ public sealed class Wait : CarAction
 
 public abstract class NodeBehavior
 {
-    protected Dictionary<RoadConnection, Lane> connections = new();
-    public abstract Vector3 GetPositionOfConnection(RoadConnection connection);
+    protected Dictionary<int, Lane> connections = new();
+    public abstract Vector3 GetPositionOfLaneCon(int connection);
     public abstract Vector3 GetPosition();
     public abstract CarAction GetCarAction(Car car, LaneConnection laneConnection, float incomingSpeedLimit);
     public abstract void UpdateLaneConnections();
     public abstract List<LaneConnection> GetLaneConnections(Lane lane);
+    public abstract Vector3 GetPositionOfSegCon(int direction);
 
     // Debugging for now
     public abstract List<LaneConnection> GetLaneConnections();
 
-    public virtual void ConnectLane(Lane lane, RoadConnection connection)
+    public virtual void ConnectLane(Lane lane, int connection)
     {
         connections[connection] = lane;
     }
@@ -60,7 +49,7 @@ public abstract class NodeBehavior
         foreach (var pair in connections)
         {
             if (pair.Value == lane)
-                return GetPositionOfConnection(pair.Key);
+                return GetPositionOfLaneCon(pair.Key);
         }
 
         return Vector3.zero;
@@ -82,28 +71,52 @@ public class Endpoint : NodeBehavior
         return position;
     }
 
-    public override Vector3 GetPositionOfConnection(RoadConnection connection)
+    public override Vector3 GetPositionOfLaneCon(int connection)
     {
         Vector3 position = this.position;
 
         switch (connection)
         {
-            case RoadConnection.TopIn:
-            case RoadConnection.BotOut:
+            case 0:
+            case 7:
             position.x -= Constants.laneWidth / 2;
             break;
-            case RoadConnection.TopOut:
-            case RoadConnection.BotIn:
+            case 1:
+            case 6:
+            position.x += Constants.laneWidth / 2;
             position.x += Constants.laneWidth / 2;
             break;
-            case RoadConnection.LeftIn:
-            case RoadConnection.RightOut:
+            case 2:
+            case 5:
             position.z -= Constants.laneWidth / 2;
             break;
-            case RoadConnection.LeftOut:
-            case RoadConnection.RightIn:
+            case 3:
+            case 4:
             position.z += Constants.laneWidth / 2;
             break;
+        }
+
+        return position;
+    }
+
+    public override Vector3 GetPositionOfSegCon(int direction)
+    {
+        Vector3 position = this.position;
+
+        switch (direction)
+        {
+            case 0: // North
+                position.z += Constants.laneWidth / 2;
+                break;
+            case 1: // South
+                position.z -= Constants.laneWidth / 2;
+                break;
+            case 2: // East
+                position.x += Constants.laneWidth / 2;
+                break;
+            case 3: // West
+                position.x -= Constants.laneWidth / 2;
+                break;
         }
 
         return position;
@@ -130,16 +143,28 @@ public class Endpoint : NodeBehavior
     }
 }
 
+/*
+0 -> topIn
+1 -> topOut
+2 -> leftIn
+3 -> leftOut
+4 -> rightIn
+5 -> rightOut
+6 -> botIn
+7 -> botOut 
+*/
 public abstract class SharedGeometryIntersection : NodeBehavior
 {
     readonly Vector3 position;
 
+    private const int numCons = 8;
+
     // Connection positions, indexed with RoadConnection
-    readonly Vector3[] cPos = new Vector3[Enum.GetValues(typeof(RoadConnection)).Length];
+    readonly Vector3[] cPos = new Vector3[numCons];
 
     // LaneConnections for each connected incoming lane
     readonly List<LaneConnection>[] laneConnections = 
-        new List<LaneConnection>[Enum.GetValues(typeof(RoadConnection)).Length];
+        new List<LaneConnection>[numCons];
 
     protected SharedGeometryIntersection(Vector3 position)
     {
@@ -150,9 +175,9 @@ public abstract class SharedGeometryIntersection : NodeBehavior
             laneConnections[i] = new();
         }
 
-        foreach (RoadConnection connection in Enum.GetValues(typeof(RoadConnection)))
+        for (int connection = 0; connection < numCons; connection++)
         {
-            cPos[(int)connection] = GetPositionOfConnection(connection);
+            cPos[connection] = GetPositionOfLaneCon(connection);
         }
     }
 
@@ -161,7 +186,7 @@ public abstract class SharedGeometryIntersection : NodeBehavior
         return position;
     }
 
-    public override Vector3 GetPositionOfConnection(RoadConnection connection)
+    public override Vector3 GetPositionOfLaneCon(int connection)
     {
 
         Vector3 position = this.position;
@@ -170,37 +195,60 @@ public abstract class SharedGeometryIntersection : NodeBehavior
         
         switch (connection)
         {
-            case RoadConnection.TopIn:
+            case 0: // TopIn
             position.x -= Constants.laneWidth / 2;
             position.z += Constants.laneWidth * laneOffset;
             break;
-            case RoadConnection.TopOut:
+            case 1: // TopOut
             position.x += Constants.laneWidth / 2;
             position.z += Constants.laneWidth * laneOffset;
             break;
-            case RoadConnection.LeftIn:
+            case 2: // LeftIn
             position.x -= Constants.laneWidth * laneOffset;
             position.z -= Constants.laneWidth / 2;
             break;
-            case RoadConnection.LeftOut:
+            case 3: // LeftOut
             position.x -= Constants.laneWidth * laneOffset;
             position.z += Constants.laneWidth / 2;
             break;
-            case RoadConnection.RightIn:
+            case 4: // RightIn
             position.x += Constants.laneWidth * laneOffset;
             position.z += Constants.laneWidth / 2;
             break;
-            case RoadConnection.RightOut:
+            case 5: // RightOut
             position.x += Constants.laneWidth * laneOffset;
             position.z -= Constants.laneWidth / 2;
             break;
-            case RoadConnection.BotIn:
+            case 6: // BotIn
             position.x += Constants.laneWidth / 2;
             position.z -= Constants.laneWidth * laneOffset;
             break;
-            case RoadConnection.BotOut:
+            case 7: // BotOut
             position.x -= Constants.laneWidth / 2;
             position.z -= Constants.laneWidth * laneOffset;
+            break;
+        }
+        return position;
+        
+    }
+    public override Vector3 GetPositionOfSegCon(int direction)
+    {
+        Vector3 position = GetPosition();
+        float intersection_padding = 1.2f;
+
+        switch (direction)
+        {
+            case 0:
+            position.z += Constants.laneWidth * intersection_padding;
+            break;
+            case 1:
+            position.z -= Constants.laneWidth * intersection_padding;
+            break;
+            case 2:
+            position.x += Constants.laneWidth * intersection_padding;
+            break;
+            case 3:
+            position.x -= Constants.laneWidth * intersection_padding;
             break;
         }
         return position;
@@ -210,24 +258,24 @@ public abstract class SharedGeometryIntersection : NodeBehavior
     {
         for (int i = 0; i < laneConnections.Length; i++) laneConnections[i].Clear();
 
-        var innerConnectionCurves = new (RoadConnection connectionIn, RoadConnection connectionOut, bool clockwiseCurve)[]
+        var innerConnectionCurves = new (int connectionIn, int connectionOut, bool clockwiseCurve)[]
         {
-            (RoadConnection.TopIn, RoadConnection.RightOut, false), //Left
-            (RoadConnection.TopIn, RoadConnection.LeftOut, true), // Right
-            (RoadConnection.BotIn, RoadConnection.RightOut, true), // Right
-            (RoadConnection.BotIn, RoadConnection.LeftOut, false), // Left
-            (RoadConnection.LeftIn, RoadConnection.TopOut, false), // Left
-            (RoadConnection.LeftIn, RoadConnection.BotOut, true), // Right
-            (RoadConnection.RightIn, RoadConnection.BotOut, false), // 
-            (RoadConnection.RightIn, RoadConnection.TopOut, true),
+            (0, 5, false),
+            (0, 3, true), 
+            (6, 5, true), 
+            (6, 3, false), 
+            (2, 1, false),
+            (2, 7, true),
+            (4, 7, false), 
+            (4, 1, true),
         };
 
-        var innerConnectionStraights = new (RoadConnection connectionIn, RoadConnection connectionOut)[]
+        var innerConnectionStraights = new (int connectionIn, int connectionOut)[]
         {
-            (RoadConnection.TopIn, RoadConnection.BotOut),
-            (RoadConnection.BotIn, RoadConnection.TopOut),
-            (RoadConnection.LeftIn, RoadConnection.RightOut),
-            (RoadConnection.RightIn, RoadConnection.LeftOut),
+            (0, 7),
+            (6, 1),
+            (2, 5),
+            (4, 3),
         };
 
 
@@ -268,7 +316,7 @@ public abstract class SharedGeometryIntersection : NodeBehavior
         foreach (var pair in connections)
         {
             if (pair.Value == lane)
-                return laneConnections[(int)pair.Key];
+                return laneConnections[pair.Key];
         }
 
         return new();
@@ -322,8 +370,8 @@ public class TrafficLightIntersection : SharedGeometryIntersection
 
         bool carIsNorthSouth = Mathf.Abs(car.direction.z) >= Mathf.Abs(car.direction.x);
         bool hasGreen = carIsNorthSouth ? northSouthOpen : eastWestOpen;
-        RoadConnection connection = GetClosestIncomingConnection(car.position);
-        float distanceToConnection = Vector3.Distance(car.FrontBumberPosition, GetPositionOfConnection(connection));
+        int connection = GetClosestIncomingConnection(car.position);
+        float distanceToConnection = Vector3.Distance(car.FrontBumberPosition, GetPositionOfLaneCon(connection));
 
         if (hasGreen || car.inIntersection)
         {
@@ -341,7 +389,7 @@ public class TrafficLightIntersection : SharedGeometryIntersection
         if (tooLateToStopComfortably)
             return new Drive(laneConnection.SpeedLimit);
 
-        return new Wait(GetPositionOfConnection(connection));
+        return new Wait(GetPositionOfLaneCon(connection));
     }
 
     LightPhase GetCurrentPhase()
@@ -363,22 +411,22 @@ public class TrafficLightIntersection : SharedGeometryIntersection
         return LightPhase.EastWestYellow;
     }
 
-    RoadConnection GetClosestIncomingConnection(Vector3 carPosition)
+    int GetClosestIncomingConnection(Vector3 carPosition)
     {
-        RoadConnection[] incoming =
+        int[] incoming =
         {
-            RoadConnection.TopIn,
-            RoadConnection.BotIn,
-            RoadConnection.LeftIn,
-            RoadConnection.RightIn,
+            0, // topIn
+            6, // BotIn
+            2, // LeftIn
+            4, // RightIn
         };
 
-        RoadConnection closest = incoming[0];
+        int closest = incoming[0];
         float closestDistance = float.MaxValue;
 
-        foreach (RoadConnection connection in incoming)
+        foreach (int connection in incoming)
         {
-            Vector3 point = GetPositionOfConnection(connection);
+            Vector3 point = GetPositionOfLaneCon(connection);
             float distance = Vector3.Distance(carPosition, point);
             if (distance < closestDistance)
             {

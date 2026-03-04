@@ -5,6 +5,7 @@ public static class Constants
 {
     public const float laneWidth = 2.0f;
     public const float pointSpacing = 0.1f;
+    public const float speedLimit = 4f;
 }
 
 public class RoadNode
@@ -26,14 +27,48 @@ public class RoadSegment
 {
     public RoadNode NodeA;
     public RoadNode NodeB;
-    public List<Lane> Lanes = new();
-    public int SpeedLimit;
 
-    public RoadSegment(RoadNode a, RoadNode b, int speedLimit)
+    public Vector3 Apos;
+    public Vector3 Bpos;
+    public List<Vector3> Points;
+    public List<Lane> Lanes = new(); // First rightLanes are from NodeA to NodeB, then leftLanes from NodeB to NodeA
+    public int RightLanes;
+    public float SpeedLimit;
+
+    public RoadSegment(RoadNode a, RoadNode b, float speedLimit, int a_dir, int b_dir)
     {
         NodeA = a;
         NodeB = b;
+        Apos = a.Behavior.GetPositionOfSegCon(a_dir);
+        Bpos = b.Behavior.GetPositionOfSegCon(b_dir);
         SpeedLimit = speedLimit;
+
+        float strength = 3f; 
+        Vector3 bezierControlPoint = Apos + (Bpos - Apos) * 0.5f - Vector3.Cross((Bpos - Apos).normalized, Vector3.up) * strength; 
+        Points = Util.GenerateQuadraticBezier(Apos, bezierControlPoint, Bpos);
+    }
+
+    public void AddLane(int offset, int dir)
+    {
+        List<Vector3> lanePoints = new();
+
+        if(dir > 0) {
+            foreach (Vector3 point in Points)
+            {
+                Vector3 perp = Vector3.Cross((Bpos - Apos).normalized, Vector3.up);
+                lanePoints.Add(point - perp * (Constants.laneWidth / 2f + offset * Constants.laneWidth));
+            }
+            Lanes.Add(new Lane(this, NodeA, NodeB, lanePoints));
+        } else
+        {
+            foreach (Vector3 point in Points)
+            {
+                Vector3 perp = Vector3.Cross((Bpos - Apos).normalized, Vector3.up);
+                lanePoints.Add(point + perp * (Constants.laneWidth / 2f + offset * Constants.laneWidth));
+            }
+            lanePoints.Reverse();
+            Lanes.Add(new Lane(this, NodeB, NodeA, lanePoints));
+        }
     }
 }
 
@@ -45,20 +80,14 @@ public class Lane
     public List<Vector3> Points;
     public SortedList<int, Car> CarsInLane = new();
 
-    public Lane(RoadSegment segment, RoadNode from, RoadNode to)
+    public Lane(RoadSegment segment, RoadNode from, RoadNode to, List<Vector3> points = null)
     {
         Segment = segment;
         From = from;
         To = to;
+        Points = points ?? new List<Vector3>();
     }
 
-    public void SetPoints(Vector3 posFrom, Vector3 posTo)
-    {
-        // float strength = 3f; 
-        // Vector3 bezierControlPoint = posFrom + (posTo - posFrom) * 0.5f - Vector3.Cross((posTo - posFrom).normalized, Vector3.up) * strength; 
-        // Points = Util.GenerateQuadraticBezier(posFrom, bezierControlPoint, posTo);
-        Points = Util.GenerateLine(posFrom, posTo);
-    }
 }
 
 public class LaneConnection
@@ -99,71 +128,114 @@ public class RoadNetwork : MonoBehaviour
         return roadNodes.ContainsKey(id) ? roadNodes[id] : null;
     }
 
+
+    void ParseText(string text)
+    {
+        string[] splitLines = text.Split((char[])null, System.StringSplitOptions.RemoveEmptyEntries);
+
+        int idx = 0;
+        int num_nodes = int.Parse(splitLines[idx++]);
+        for (int i = 0; i < num_nodes; i++)
+        {
+            int type = int.Parse(splitLines[idx++]);
+            float x = float.Parse(splitLines[idx++]);
+            float z = float.Parse(splitLines[idx++]);
+            Vector3 pos = new Vector3(x, 0f, z);
+            NodeBehavior behavior = type switch
+            {
+                0 => new Endpoint(pos),
+                1 => new TrafficLightIntersection(pos),
+                2 => new StopSignIntersection(pos),
+                _ => throw new System.Exception("Invalid node type in input data")
+            };
+            RoadNode node = new RoadNode(i, behavior);
+            roadNodes.Add(i, node);
+        }
+        int num_segments = int.Parse(splitLines[idx++]);
+        for (int i = 0; i < num_segments; i++)
+        {
+            int nodeA = int.Parse(splitLines[idx++]);
+            int nodeB = int.Parse(splitLines[idx++]);
+            int a_dir = int.Parse(splitLines[idx++]);
+            int b_dir = int.Parse(splitLines[idx++]);
+            int left_lanes = int.Parse(splitLines[idx++]);
+            int right_lanes = int.Parse(splitLines[idx++]);
+            RoadSegment segment = new RoadSegment(roadNodes[nodeA], roadNodes[nodeB], Constants.speedLimit, a_dir, b_dir);
+ 
+            for (int j = 0; j < right_lanes; j++)
+            {
+                int con_1 = int.Parse(splitLines[idx++]);
+                int con_2 = int.Parse(splitLines[idx++]);
+                segment.AddLane(j, 1);
+                Lane AB = segment.Lanes[^1];
+                
+                roadNodes[nodeA].Behavior.ConnectLane(AB, con_1);
+                roadNodes[nodeB].Behavior.ConnectLane(AB, con_2);
+            }
+            for (int j = 0; j < left_lanes; j++)
+            {
+                int con_1 = int.Parse(splitLines[idx++]);
+                int con_2 = int.Parse(splitLines[idx++]);
+                segment.AddLane(j, 0);
+                Lane BA = segment.Lanes[^1];
+                
+                roadNodes[nodeB].Behavior.ConnectLane(BA, con_1);
+                roadNodes[nodeA].Behavior.ConnectLane(BA, con_2);
+            }
+            roadNodes[nodeA].ConnectedSegments.Add(segment);
+            roadNodes[nodeB].ConnectedSegments.Add(segment);
+            roadSegments.Add(segment);
+        }
+        foreach (RoadNode node in roadNodes.Values)
+        {
+            switch (node.Behavior)
+            {
+                case Endpoint:
+                    break;
+                case TrafficLightIntersection:
+                    node.Behavior.UpdateLaneConnections();
+                    break;
+                case StopSignIntersection:
+                    node.Behavior.UpdateLaneConnections();
+                    break;
+            }
+        }
+    }
     void Start()
     {
-
-        RoadNode endpointA = new RoadNode(0, new Endpoint(new Vector3(-15f, 0f, 0f)));
-        RoadNode endpointB = new RoadNode(1, new Endpoint(new Vector3(15f, 0f, 0f)));
-        RoadNode endpointC = new RoadNode(2, new Endpoint(new Vector3(0f, 0f, -15f)));
-        RoadNode endpointD = new RoadNode(3, new Endpoint(new Vector3(0f, 0f, 15f)));
-        
-        RoadNode trafficLightIntersection = new RoadNode(
-            4, 
-            new TrafficLightIntersection(Vector3.zero)
-        );
-
-        RoadSegment westRoad = new RoadSegment(endpointA, trafficLightIntersection, 4);
-        RoadSegment eastRoad = new RoadSegment(endpointB, trafficLightIntersection, 4);
-        RoadSegment southRoad = new RoadSegment(endpointC, trafficLightIntersection, 4);
-        RoadSegment northRoad = new RoadSegment(endpointD, trafficLightIntersection, 4);
-
-        // Snyggaste kod någonsin skrivit
-        var roadConfigs = new (RoadNode endpoint, RoadSegment segment, RoadConnection endpointOut, RoadConnection intersectionIn, RoadConnection intersectionOut, RoadConnection endpointIn)[]
+        TextAsset textFile = Resources.Load<TextAsset>("network");
+         if (textFile != null)
         {
-            (endpointA, westRoad, RoadConnection.RightOut, RoadConnection.LeftIn, RoadConnection.LeftOut, RoadConnection.RightIn),
-            (endpointB, eastRoad, RoadConnection.LeftOut, RoadConnection.RightIn, RoadConnection.RightOut, RoadConnection.LeftIn),
-            (endpointC, southRoad, RoadConnection.TopOut, RoadConnection.BotIn, RoadConnection.BotOut, RoadConnection.TopIn),
-            (endpointD, northRoad, RoadConnection.BotOut, RoadConnection.TopIn, RoadConnection.TopOut, RoadConnection.BotIn)
-        };
+            string fileContents = textFile.text;
+            Debug.Log(fileContents);
 
-        foreach (var (endpoint, segment, endpointOut, intersectionIn, intersectionOut, endpointIn) in roadConfigs)
-        {
-            // Lane going toward intersection
-            Lane toIntersection = new Lane(segment, endpoint, trafficLightIntersection);
-            toIntersection.SetPoints(
-                endpoint.Behavior.GetPositionOfConnection(endpointOut),
-                trafficLightIntersection.Behavior.GetPositionOfConnection(intersectionIn)
-            );
-            trafficLightIntersection.Behavior.ConnectLane(toIntersection, intersectionIn);
-            endpoint.Behavior.ConnectLane(toIntersection, endpointOut);
-            segment.Lanes.Add(toIntersection);
-
-            // Lane going away from intersection
-            Lane fromIntersection = new Lane(segment, trafficLightIntersection, endpoint);
-            fromIntersection.SetPoints(
-                trafficLightIntersection.Behavior.GetPositionOfConnection(intersectionOut),
-                endpoint.Behavior.GetPositionOfConnection(endpointIn)
-            );
-            trafficLightIntersection.Behavior.ConnectLane(fromIntersection, intersectionOut);
-            endpoint.Behavior.ConnectLane(fromIntersection, endpointIn);
-            segment.Lanes.Add(fromIntersection);
-
-            endpoint.ConnectedSegments.Add(segment);
-            trafficLightIntersection.ConnectedSegments.Add(segment);
+            ParseText(fileContents);
         }
+        else
+        {
+            Debug.LogError("Data file not found!");
+        }
+        // DebugPrint();
+    }
 
-        trafficLightIntersection.Behavior.UpdateLaneConnections();
-
-        roadSegments.Add(westRoad);
-        roadSegments.Add(eastRoad);
-        roadSegments.Add(southRoad);
-        roadSegments.Add(northRoad);
-
-        roadNodes.Add(endpointA.Id, endpointA);
-        roadNodes.Add(endpointB.Id, endpointB);
-        roadNodes.Add(endpointC.Id, endpointC);
-        roadNodes.Add(endpointD.Id, endpointD);
-        roadNodes.Add(trafficLightIntersection.Id, trafficLightIntersection);
+    void DebugPrint() 
+    {
+        foreach (RoadNode node in roadNodes.Values)
+        {
+            Debug.Log($"Node {node.Id} at {node.Position} with behavior {node.Behavior.GetType().Name}");
+            Debug.Log($"Connected Segments: {node.ConnectedSegments.Count}");
+            foreach (RoadSegment segment in node.ConnectedSegments)
+            {
+                Debug.Log($"  Connected to Node {(segment.NodeA == node ? segment.NodeB.Id : segment.NodeA.Id)} with {segment.Lanes.Count} lanes");
+                foreach (Lane lane in segment.Lanes)
+                {
+                    if (lane.From == node)
+                        Debug.Log($"    Lane from Node {lane.From.Id} to Node {lane.To.Id}");
+                    else
+                        Debug.Log($"    Lane from Node {lane.From.Id} to Node {lane.To.Id}");
+                }
+            }
+        }
     }
 
     public List<Lane> GetOutgoingLanes(RoadNode roadNode, Lane incomingLane = null)
