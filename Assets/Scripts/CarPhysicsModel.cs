@@ -70,14 +70,10 @@ public class CarPhysicsModel : MonoBehaviour
         if (Mathf.Abs(requestedForce) < 5f)
             requestedForce = 0f;
 
-        Debug.Log($"Requested Force: {requestedForce}");
-
         float maxTractionForce = surface.ForwardGrip * rb.mass * gravityMagnitude;
         float maxForwardForce = Mathf.Min(maxEngineForce, maxTractionForce);
         float maxReverseForce = Mathf.Min(maxBrakeForce, maxTractionForce);
         float longitudinalForce = Mathf.Clamp(requestedForce, -maxReverseForce, maxForwardForce);
-
-        Debug.Log($"longitudinalForce: {longitudinalForce}");
 
         rb.AddForce(transform.forward * longitudinalForce, ForceMode.Force);
 
@@ -86,16 +82,12 @@ public class CarPhysicsModel : MonoBehaviour
         lateralForce = Mathf.Clamp(lateralForce, -maxLateralForce, maxLateralForce);
         rb.AddForce(transform.right * lateralForce, ForceMode.Force);
 
-        Debug.Log($"Lateral force: {lateralForce}");
-
         if (planarVelocity.sqrMagnitude > 0.001f)
         {
             Vector3 dragForce = -planarVelocity * surface.LinearDrag;
-            Debug.Log($"drag force: {dragForce}");
             rb.AddForce(dragForce, ForceMode.Force);
 
             Vector3 rollingForce = -planarVelocity.normalized * (surface.RollingResistance * rb.mass * gravityMagnitude);
-            Debug.Log($"Rolling force: {rollingForce}");
             rb.AddForce(rollingForce, ForceMode.Force);
         }
 

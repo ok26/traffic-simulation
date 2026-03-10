@@ -61,7 +61,14 @@ public class TrafficController : MonoBehaviour
             return false;
         }
 
-        Lane startLane = outgoingLanes[0];
+        RoadPath path = AStar.FindPath(roadNetwork, startNode, goalNode);
+        if (path == null || path.StartingLane == null)
+        {
+            Debug.LogWarning($"No valid path from node {startId} to node {goalId}");
+            return false;
+        }
+
+        Lane startLane = path.StartingLane;
         Vector3 spawnPosition = startLane.Points[0];
         
         // Adjust so that cars are above ground
