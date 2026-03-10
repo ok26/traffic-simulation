@@ -63,6 +63,11 @@ public class TrafficController : MonoBehaviour
 
         Lane startLane = outgoingLanes[0];
         Vector3 spawnPosition = startLane.Points[0];
+        
+        // Adjust so that cars are above ground
+        Renderer renderer = carPrefab.GetComponent<Renderer>();
+        if (renderer != null)
+            spawnPosition.y += renderer.bounds.size.y / 2f;
 
         if (IsSpawnPositionBlocked(startLane, spawnPosition))
             return false;

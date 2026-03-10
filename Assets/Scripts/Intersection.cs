@@ -158,6 +158,7 @@ public abstract class SharedGeometryIntersection : NodeBehavior
     readonly Vector3 position;
 
     private const int numCons = 8;
+    private const float laneOffset = 2.0f;
 
     // Connection positions, indexed with RoadConnection
     readonly Vector3[] cPos = new Vector3[numCons];
@@ -190,8 +191,6 @@ public abstract class SharedGeometryIntersection : NodeBehavior
     {
 
         Vector3 position = this.position;
-
-        const float laneOffset = 2.0f;
         
         switch (connection)
         {
@@ -231,10 +230,11 @@ public abstract class SharedGeometryIntersection : NodeBehavior
         return position;
         
     }
+    
     public override Vector3 GetPositionOfSegCon(int direction)
     {
         Vector3 position = GetPosition();
-        float intersection_padding = 1.2f;
+        float intersection_padding = laneOffset;
 
         switch (direction)
         {
@@ -322,14 +322,59 @@ public abstract class SharedGeometryIntersection : NodeBehavior
         return new();
     }
 
+    protected int GetConnectionFromLane(Lane lane)
+    {
+        foreach (var pair in connections)
+        {
+            if (pair.Value == lane)
+                return pair.Key;
+        }
+
+        return -1;
+    }
+
     public override List<LaneConnection> GetLaneConnections()
     {
         return laneConnections.SelectMany(x => x).ToList();
+    }
+
+    protected int GetClosestIncomingConnection(Vector3 carPosition)
+    {
+        int[] incoming =
+        {
+            0, // TopIn
+            6, // BotIn
+            2, // LeftIn
+            4, // RightIn
+        };
+
+        int closest = incoming[0];
+        float closestDistance = float.MaxValue;
+
+        foreach (int connection in incoming)
+        {
+            Vector3 point = GetPositionOfLaneCon(connection);
+            float distance = Vector3.Distance(carPosition, point);
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                closest = connection;
+            }
+        }
+
+        return closest;
     }
 }
 
 public class StopSignIntersection : SharedGeometryIntersection
 {
+
+    Queue<Car> waitingStack = new();
+    HashSet<Car> waitingCars = new();
+    Car currentDrivingCar;
+
+    private float distanceToStopLine = 1.5f;
+    private float distanceToExit = 2.5f;
 
     public StopSignIntersection(Vector3 position) : base(position)
     {
@@ -337,7 +382,53 @@ public class StopSignIntersection : SharedGeometryIntersection
 
     public override CarAction GetCarAction(Car car, LaneConnection laneConnection, float incomingSpeedLimit)
     {
-        return new Drive(2.0f);
+        bool canDrive = false;
+
+        if (currentDrivingCar != null && currentDrivingCar == car)
+        {
+            canDrive = true;
+        }
+
+        if (currentDrivingCar == null)
+        {
+            if (waitingStack.Count > 0)
+            {
+                currentDrivingCar = waitingStack.Dequeue();
+                waitingCars.Remove(currentDrivingCar);
+            }
+            else
+            {
+                currentDrivingCar = null;
+            }
+        }
+
+        int connectionIn = GetConnectionFromLane(laneConnection.From);
+        int connectionOut = GetConnectionFromLane(laneConnection.To);
+        float distanceToConIn = Vector3.Distance(car.FrontBumberPosition, GetPositionOfLaneCon(connectionIn));
+        float distanceToConOut = Vector3.Distance(car.FrontBumberPosition, GetPositionOfLaneCon(connectionOut));
+
+        if (currentDrivingCar == car && distanceToConOut <= distanceToExit)
+        {
+            currentDrivingCar = null;
+        }
+
+        if (!waitingCars.Contains(car) && distanceToConIn <= distanceToStopLine)
+        {
+            waitingStack.Enqueue(car);
+            waitingCars.Add(car);
+        }
+        
+        if (canDrive || car.inIntersection)
+        {
+            float reactionDistance = Mathf.Max(0.1f, 2.0f * car.velocity);
+            float k = Mathf.Max(0.0f, 1.0f - (distanceToConIn / reactionDistance));
+            float speedLimit = car.inIntersection ?
+                laneConnection.SpeedLimit :
+                Mathf.Lerp(incomingSpeedLimit, laneConnection.SpeedLimit, k);
+            return new Drive(speedLimit);
+        }
+
+        return new Wait(GetPositionOfLaneCon(connectionIn));
     }
 }
 
@@ -370,7 +461,7 @@ public class TrafficLightIntersection : SharedGeometryIntersection
 
         bool carIsNorthSouth = Mathf.Abs(car.direction.z) >= Mathf.Abs(car.direction.x);
         bool hasGreen = carIsNorthSouth ? northSouthOpen : eastWestOpen;
-        int connection = GetClosestIncomingConnection(car.position);
+        int connection = GetConnectionFromLane(laneConnection.From);
         float distanceToConnection = Vector3.Distance(car.FrontBumberPosition, GetPositionOfLaneCon(connection));
 
         if (hasGreen || car.inIntersection)
@@ -411,30 +502,4 @@ public class TrafficLightIntersection : SharedGeometryIntersection
         return LightPhase.EastWestYellow;
     }
 
-    int GetClosestIncomingConnection(Vector3 carPosition)
-    {
-        int[] incoming =
-        {
-            0, // topIn
-            6, // BotIn
-            2, // LeftIn
-            4, // RightIn
-        };
-
-        int closest = incoming[0];
-        float closestDistance = float.MaxValue;
-
-        foreach (int connection in incoming)
-        {
-            Vector3 point = GetPositionOfLaneCon(connection);
-            float distance = Vector3.Distance(carPosition, point);
-            if (distance < closestDistance)
-            {
-                closestDistance = distance;
-                closest = connection;
-            }
-        }
-
-        return closest;
-    }
 }

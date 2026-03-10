@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -25,21 +26,39 @@ public class Car : MonoBehaviour
     public float steeringAngle = 0.0f;
     public float maxSpeed = 5f;
 
+    private Rigidbody rb;
+    private CarPhysicsModel physicsModel;
+
     public Vector3 BackBumperPosition => position - (wheelbase / 2) * direction;
     public Vector3 FrontBumberPosition => position + (wheelbase / 2) * direction;
     public bool inIntersection => carNavigator.inIntersection;
 
     void Start()
     {
-        if (roadNetwork == null || startPoint == null || goal == null) 
+        rb = GetComponent<Rigidbody>();
+        physicsModel = GetComponent<CarPhysicsModel>();
+        if (physicsModel == null)
+            physicsModel = gameObject.AddComponent<CarPhysicsModel>();
+
+        if (physicsModel != null)
+            physicsModel.wheelbase = wheelbase;
+
+        if (roadNetwork == null || startPoint == null || goal == null || rb == null) 
             return;
+
+        position = rb.position;
+        direction = Vector3.ProjectOnPlane(transform.forward, Vector3.up);
+        if (direction.sqrMagnitude < 0.0001f)
+            direction = Vector3.forward;
+        direction.Normalize();
+        velocity = Mathf.Clamp(Vector3.ProjectOnPlane(rb.linearVelocity, Vector3.up).magnitude, 0f, maxSpeed);
 
         carNavigator = new(this, roadNetwork, startPoint, goal);
         purePursuit = new();
         idm = new();
     }
 
-    void Update()
+    void FixedUpdate()
     {
         if (carNavigator == null || purePursuit == null || idm == null)
             return;
@@ -56,6 +75,8 @@ public class Car : MonoBehaviour
         float distanceToNextCar, 
         float velocityOfNextCar) = carNavigator.GetRoadInfo();
 
+        speedLimit = Mathf.Min(speedLimit, maxSpeed);
+
         (List<Vector3> upcomingPath,
         int closestPointIndex) = carNavigator.GetUpcomingPath();
 
@@ -69,24 +90,12 @@ public class Car : MonoBehaviour
             acceleration = 0f;
 
         steeringAngle = purePursuit.CalculateSteeringAngle(this, upcomingPath, closestPointIndex);
-        velocity += acceleration * Time.deltaTime;
-        velocity = Mathf.Clamp(velocity, 0f, maxSpeed);
 
-        if (float.IsNaN(velocity) || float.IsInfinity(velocity))
-            velocity = 0f;
-
-        float deltaRad = Mathf.Deg2Rad * steeringAngle;
-        float angularVelocity = (velocity / wheelbase) * Mathf.Tan(deltaRad);
-
-        if (angularVelocity != 0f)
+        if (physicsModel != null)
         {
-            Quaternion rot = Quaternion.AngleAxis(Mathf.Rad2Deg * angularVelocity * Time.deltaTime, Vector3.up);
-            direction = rot * direction;
-            direction.y = 0;
-            direction.Normalize();
+            physicsModel.wheelbase = wheelbase;
+            physicsModel.Step(acceleration, steeringAngle);
         }
-
-        position += direction * velocity * Time.deltaTime;
 
         if (!float.IsFinite(position.x) || !float.IsFinite(position.y) || !float.IsFinite(position.z))
         {
@@ -94,9 +103,20 @@ public class Car : MonoBehaviour
             return;
         }
 
-        transform.position = position;
-        if (direction != Vector3.zero) 
-            transform.rotation = Quaternion.LookRotation(direction, Vector3.up); 
+        position = rb.position;
+
+        Vector3 planarForward = Vector3.ProjectOnPlane(transform.forward, Vector3.up);
+        if (planarForward.sqrMagnitude > 0.0001f)
+            direction = planarForward.normalized;
+
+        Vector3 planarVelocity = Vector3.ProjectOnPlane(rb.linearVelocity, Vector3.up);
+        velocity = Mathf.Clamp(planarVelocity.magnitude, 0f, maxSpeed);
+        if (!float.IsFinite(velocity))
+            velocity = 0f;
+
+        // transform.position = position;
+        // if (direction != Vector3.zero) 
+            // transform.rotation = Quaternion.LookRotation(direction, Vector3.up); 
     }
 
     public void Destroy()

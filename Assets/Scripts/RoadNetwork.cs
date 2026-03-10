@@ -196,8 +196,6 @@ public class RoadNetwork : MonoBehaviour
                 case Endpoint:
                     break;
                 case TrafficLightIntersection:
-                    node.Behavior.UpdateLaneConnections();
-                    break;
                 case StopSignIntersection:
                     node.Behavior.UpdateLaneConnections();
                     break;

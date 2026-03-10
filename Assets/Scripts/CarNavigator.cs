@@ -81,7 +81,7 @@ public class CarNavigator
                     return true;
                 }
                 
-                if (carPath.Connections.Count != 0 && closestPointIdx >= lanePathPointCnt)
+                if (carPath.Connections.Count != 0 && hasPassedCurrentLaneStopLine())
                 {
                     // Swap lane to laneconnection
                     moveCarBetweenLaneLists(
@@ -90,7 +90,7 @@ public class CarNavigator
                     carState = CarState.Intersection;
                     currentIntersection = carPath.Connections.Peek().Behavior;
                     currentPath = new List<Vector3>(path.GetRange(lanePathPointCnt, path.Count - lanePathPointCnt));
-                    closestPointIdx -= lanePathPointCnt;
+                    closestPointIdx = Mathf.Max(0, closestPointIdx - lanePathPointCnt);
                 }
 
                 currentPath = path;
@@ -177,6 +177,19 @@ public class CarNavigator
 
         list.Add(key, car);
         return key;
+    }
+
+    bool hasPassedCurrentLaneStopLine()
+    {
+        if (currentLane == null || currentLane.Points == null || currentLane.Points.Count < 2)
+            return false;
+
+        Vector3 stopPoint = currentLane.Points[^1];
+        Vector3 previousPoint = currentLane.Points[^2];
+        Vector3 laneDirectionAtStop = (stopPoint - previousPoint).normalized;
+
+        float signedDistanceToStopLine = Vector3.Dot(car.FrontBumberPosition - stopPoint, laneDirectionAtStop);
+        return signedDistanceToStopLine >= 0f;
     }
 
     // Returns (speedLimit, distanceToNextCar, velocityOfNextCar)

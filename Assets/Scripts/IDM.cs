@@ -2,11 +2,11 @@ using UnityEngine;
 
 public class IDM
 {
-    readonly float maxAcceleration = 1.0f;
-    readonly float targetDeceleration = 0.5f;
-    readonly float maxDeceleration = 5.0f;
-    readonly float minimumGapBetweenCars = 0.5f;
-    readonly float minimumTimeToCar = 1.0f;
+    readonly float maxAcceleration = 2.5f;
+    readonly float targetDeceleration = 1.8f;
+    readonly float maxDeceleration = 6.0f;
+    readonly float minimumGapBetweenCars = 1.0f;
+    readonly float minimumTimeToCar = 1.2f;
     readonly float delta = 4.0f;
 
     public float CalculateCarAcceleration(
