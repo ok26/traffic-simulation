@@ -111,7 +111,7 @@ public class Util
         return points;
     }
 
-    public static List<Vector3> GenerateQuadraticBezier(Vector3 start, Vector3 control, Vector3 end) {
+    public static List<Vector3> GenerateCubicBezier(Vector3 start, Vector3 control1, Vector3 control2, Vector3 end) {
         var points = new List<Vector3>();
         
         int steps = Mathf.CeilToInt(Vector3.Distance(start, end) / Constants.pointSpacing);
@@ -119,8 +119,8 @@ public class Util
         for (int i = 0; i <= steps; i++)
         {
             float t = (float)i / steps;
-            Vector3 Q0 = Vector3.Lerp(start, control, t);
-            Vector3 Q1 = Vector3.Lerp(control, end, t);
+            Vector3 Q0 = Vector3.Lerp(start, control1, t);
+            Vector3 Q1 = Vector3.Lerp(control2, end, t);
             points.Add(Vector3.Lerp(Q0, Q1, t));
         }
 

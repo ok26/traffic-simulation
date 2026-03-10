@@ -35,7 +35,7 @@ public class RoadSegment
     public int RightLanes;
     public float SpeedLimit;
 
-    public RoadSegment(RoadNode a, RoadNode b, float speedLimit, int a_dir, int b_dir)
+    public RoadSegment(RoadNode a, RoadNode b, float speedLimit, int a_dir, int b_dir, Vector3 ctrlp1 = default, Vector3 ctrlp2 = default)
     {
         NodeA = a;
         NodeB = b;
@@ -43,9 +43,7 @@ public class RoadSegment
         Bpos = b.Behavior.GetPositionOfSegCon(b_dir);
         SpeedLimit = speedLimit;
 
-        float strength = 3f; 
-        Vector3 bezierControlPoint = Apos + (Bpos - Apos) * 0.5f - Vector3.Cross((Bpos - Apos).normalized, Vector3.up) * strength; 
-        Points = Util.GenerateQuadraticBezier(Apos, bezierControlPoint, Bpos);
+        Points = Util.GenerateCubicBezier(Apos, ctrlp1, ctrlp2, Bpos);
     }
 
     public void AddLane(int offset, int dir)
@@ -158,9 +156,15 @@ public class RoadNetwork : MonoBehaviour
             int nodeB = int.Parse(splitLines[idx++]);
             int a_dir = int.Parse(splitLines[idx++]);
             int b_dir = int.Parse(splitLines[idx++]);
+            float p1x = float.Parse(splitLines[idx++]);
+            float p1z = float.Parse(splitLines[idx++]);
+            float p2x = float.Parse(splitLines[idx++]);
+            float p2z = float.Parse(splitLines[idx++]);
+            Vector3 ctrlp1 = new(p1x, 0f, p1z);
+            Vector3 ctrlp2 = new(p2x, 0f, p2z);
             int left_lanes = int.Parse(splitLines[idx++]);
             int right_lanes = int.Parse(splitLines[idx++]);
-            RoadSegment segment = new RoadSegment(roadNodes[nodeA], roadNodes[nodeB], Constants.speedLimit, a_dir, b_dir);
+            RoadSegment segment = new RoadSegment(roadNodes[nodeA], roadNodes[nodeB], Constants.speedLimit, a_dir, b_dir, ctrlp1, ctrlp2);
  
             for (int j = 0; j < right_lanes; j++)
             {
@@ -168,7 +172,6 @@ public class RoadNetwork : MonoBehaviour
                 int con_2 = int.Parse(splitLines[idx++]);
                 segment.AddLane(j, 1);
                 Lane AB = segment.Lanes[^1];
-                
                 roadNodes[nodeA].Behavior.ConnectLane(AB, con_1);
                 roadNodes[nodeB].Behavior.ConnectLane(AB, con_2);
             }
@@ -178,7 +181,7 @@ public class RoadNetwork : MonoBehaviour
                 int con_2 = int.Parse(splitLines[idx++]);
                 segment.AddLane(j, 0);
                 Lane BA = segment.Lanes[^1];
-                
+
                 roadNodes[nodeB].Behavior.ConnectLane(BA, con_1);
                 roadNodes[nodeA].Behavior.ConnectLane(BA, con_2);
             }
@@ -203,7 +206,7 @@ public class RoadNetwork : MonoBehaviour
     }
     void Start()
     {
-        TextAsset textFile = Resources.Load<TextAsset>("network");
+        TextAsset textFile = Resources.Load<TextAsset>("network2");
          if (textFile != null)
         {
             string fileContents = textFile.text;
