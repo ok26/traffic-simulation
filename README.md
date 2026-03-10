@@ -13,6 +13,12 @@ Simulates an intersection with stop signs which halt cars and force them to use 
 
 ## Directions and connections of nodes
 Node types 0-2 use the following format: 
+z
+|
+|
+  ---- x
+
+
 
 ### Intersection Direction
 ```
@@ -57,6 +63,8 @@ The format of the file is the following:
 **n0 n1**  *The index of connected nodes(indices are in order of the previous list of nodes)*
 
 **d0 d1**  *The direction in which to enter a node (See directions of nodes above)*
+
+**ctrlp1 ctrlp2** *Bezier control points of the road*
 
 **rl ll**  *Number of lanes (right & left)*
 
