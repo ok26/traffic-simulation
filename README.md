@@ -13,11 +13,15 @@ Simulates an intersection with stop signs which halt cars and force them to use 
 
 ## Directions and connections of nodes
 Node types 0-2 use the following format: 
+```
 z
-|
-|
-  ---- x
+(0 1)
 
+|
+|
+
+(0 0) ---- (1 0) x
+```
 
 
 ### Intersection Direction
