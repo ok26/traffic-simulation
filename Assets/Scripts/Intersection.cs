@@ -374,7 +374,9 @@ public class StopSignIntersection : SharedGeometryIntersection
     Car currentDrivingCar;
 
     private float distanceToStopLine = 1.5f;
-    private float distanceToExit = 2.5f;
+    private float distanceToExit = 2.0f;
+    private float maxTurnClaimDuration = 8.0f;
+    private float currentDrivingCarAssignedTime = -1.0f;
 
     public StopSignIntersection(Vector3 position) : base(position)
     {
@@ -382,28 +384,11 @@ public class StopSignIntersection : SharedGeometryIntersection
 
     public override CarAction GetCarAction(Car car, LaneConnection laneConnection, float incomingSpeedLimit)
     {
-        bool canDrive = false;
-
-        if (currentDrivingCar != null && currentDrivingCar == car)
-        {
-            canDrive = true;
-        }
-
-        if (currentDrivingCar == null)
-        {
-            if (waitingStack.Count > 0)
-            {
-                currentDrivingCar = waitingStack.Dequeue();
-                waitingCars.Remove(currentDrivingCar);
-            }
-            else
-            {
-                currentDrivingCar = null;
-            }
-        }
-
         int connectionIn = GetConnectionFromLane(laneConnection.From);
         int connectionOut = GetConnectionFromLane(laneConnection.To);
+        if (connectionIn < 0 || connectionOut < 0)
+            return new Drive(incomingSpeedLimit);
+
         float distanceToConIn = Vector3.Distance(car.FrontBumberPosition, GetPositionOfLaneCon(connectionIn));
         float distanceToConOut = Vector3.Distance(car.FrontBumberPosition, GetPositionOfLaneCon(connectionOut));
 
@@ -412,11 +397,35 @@ public class StopSignIntersection : SharedGeometryIntersection
             currentDrivingCar = null;
         }
 
-        if (!waitingCars.Contains(car) && distanceToConIn <= distanceToStopLine)
+        if (currentDrivingCar != null && !currentDrivingCar.inIntersection)
+        {
+            float heldDuration = Time.time - currentDrivingCarAssignedTime;
+            if (heldDuration > maxTurnClaimDuration)
+                currentDrivingCar = null;
+        }
+
+        if (currentDrivingCar == null)
+        {
+            while (waitingStack.Count > 0)
+            {
+                Car nextCar = waitingStack.Dequeue();
+                if (nextCar == null || !waitingCars.Contains(nextCar))
+                    continue;
+
+                currentDrivingCar = nextCar;
+                waitingCars.Remove(currentDrivingCar);
+                currentDrivingCarAssignedTime = Time.time;
+                break;
+            }
+        }
+
+        if (car != currentDrivingCar && !waitingCars.Contains(car) && distanceToConIn <= distanceToStopLine)
         {
             waitingStack.Enqueue(car);
             waitingCars.Add(car);
         }
+
+        bool canDrive = currentDrivingCar == car;
         
         if (canDrive || car.inIntersection)
         {

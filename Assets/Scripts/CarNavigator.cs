@@ -211,6 +211,15 @@ public class CarNavigator
         {
             nextCar = carLaneList.Values[index + 1];
         }
+        else if (!(carState == CarState.Lane && carPath.Connections.Count == 0))
+        {
+            SortedList<int, Car> carNextLaneList = carState == CarState.Lane ?
+                carPath.Connections.Peek().CarsInConnection :
+                carPath.Connections.Peek().To.CarsInLane;
+
+            if (carNextLaneList.Count > 0)
+                nextCar = carNextLaneList.Values[0];
+        }
 
         switch (carState)
         {
