@@ -24,8 +24,8 @@ public class RoadVisualizer : MonoBehaviour
                 case Endpoint:
                 DrawEndpoint(node);
                     break;
-                case StopSignIntersection:
-                DrawStopSignIntersection(node);
+                case SharedGeometryIntersection:
+                DrawSharedGeometryIntersection(node);
                     break;
                 default:
                     break;
@@ -39,20 +39,26 @@ public class RoadVisualizer : MonoBehaviour
         GameObject endpointObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
         endpointObj.name = $"Endpoint_{node.Id}";
         endpointObj.transform.SetParent(transform);
-        endpointObj.transform.position = node.Position + Vector3.down * yOffset;
+        endpointObj.transform.position = node.Position + Vector3.up * yOffset;
         endpointObj.transform.localScale = new Vector3(width, 0.1f, width);
+        Collider endpointCollider = endpointObj.GetComponent<Collider>();
+        if (endpointCollider != null)
+            Destroy(endpointCollider);
         var renderer = endpointObj.GetComponent<MeshRenderer>();
         renderer.sharedMaterial = RoadMaterial;
     }
 
-    void DrawStopSignIntersection(RoadNode node)
+    void DrawSharedGeometryIntersection(RoadNode node)
     {
         float width = Constants.laneWidth/4f;
         GameObject intersectionObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
         intersectionObj.name = $"StopSignIntersection_{node.Id}";
         intersectionObj.transform.SetParent(transform);
-        intersectionObj.transform.position = node.Position + Vector3.down * yOffset;
+        intersectionObj.transform.position = node.Position + Vector3.up * yOffset;
         intersectionObj.transform.localScale = new Vector3(width, 0.1f, width);
+        Collider intersectionCollider = intersectionObj.GetComponent<Collider>();
+        if (intersectionCollider != null)
+            Destroy(intersectionCollider);
         var renderer = intersectionObj.GetComponent<MeshRenderer>();
         renderer.sharedMaterial = RoadMaterial;
     }
@@ -74,8 +80,8 @@ public class RoadVisualizer : MonoBehaviour
 
             // Setup first two vertices
             Vector3 perp = Vector3.Cross((lane.Points[1] - lane.Points[0]).normalized, Vector3.up);
-            Vector3 v0 = lane.Points[0] + perp * (width / 2f) + Vector3.down*yOffset;
-            Vector3 v1 = lane.Points[0] - perp * (width / 2f) + Vector3.down*yOffset;
+            Vector3 v0 = lane.Points[0] + perp * (width / 2f) + Vector3.up*yOffset;
+            Vector3 v1 = lane.Points[0] - perp * (width / 2f) + Vector3.up*yOffset;
 
             for (int i = 1; i < lane.Points.Count - 1; i++)
             {
@@ -92,8 +98,8 @@ public class RoadVisualizer : MonoBehaviour
                 |     \ |
                 v0--p1--v1
                 */
-                Vector3 v2 = p2 + perp * (width / 2f) + Vector3.down*yOffset;
-                Vector3 v3 = p2 - perp * (width / 2f) + Vector3.down*yOffset;
+                Vector3 v2 = p2 + perp * (width / 2f) + Vector3.up*yOffset;
+                Vector3 v3 = p2 - perp * (width / 2f) + Vector3.up*yOffset;
                 int index = vertices.Count;
 
                 vertices.Add(v0);
