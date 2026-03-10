@@ -115,13 +115,20 @@ public class Util
         var points = new List<Vector3>();
         
         int steps = Mathf.CeilToInt(Vector3.Distance(start, end) / Constants.pointSpacing);
+        Vector3 B0 = start;
+        Vector3 B1 = control1;
+        Vector3 B2 = control2;
+        Vector3 B3 = end;
 
         for (int i = 0; i <= steps; i++)
         {
             float t = (float)i / steps;
-            Vector3 Q0 = Vector3.Lerp(start, control1, t);
-            Vector3 Q1 = Vector3.Lerp(control2, end, t);
-            points.Add(Vector3.Lerp(Q0, Q1, t));
+            Vector3 point =
+                Mathf.Pow(1-t,3) * B0 +
+                3 * Mathf.Pow(1-t,2) * t * B1 +
+                3 * (1-t) * t * t * B2 +
+                t * t * t * B3;
+            points.Add(point);
         }
 
         return points;
