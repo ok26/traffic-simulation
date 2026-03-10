@@ -72,8 +72,27 @@ public class CarPhysicsModel : MonoBehaviour
 
         float maxTractionForce = surface.ForwardGrip * rb.mass * gravityMagnitude;
         float maxForwardForce = Mathf.Min(maxEngineForce, maxTractionForce);
-        float maxReverseForce = Mathf.Min(maxBrakeForce, maxTractionForce);
-        float longitudinalForce = Mathf.Clamp(requestedForce, -maxReverseForce, maxForwardForce);
+        float maxBrakeForceLimited = Mathf.Min(maxBrakeForce, maxTractionForce);
+
+        float longitudinalForce;
+        if (requestedForce >= 0f)
+        {
+            longitudinalForce = Mathf.Clamp(requestedForce, 0f, maxForwardForce);
+        }
+        else
+        {
+            float brakeMagnitude = Mathf.Clamp(-requestedForce, 0f, maxBrakeForceLimited);
+
+            if (Mathf.Abs(forwardSpeed) < 0.05f)
+            {
+                // Prevent "braking" from creating reverse motion when nearly stopped.
+                longitudinalForce = 0f;
+            }
+            else
+            {
+                longitudinalForce = -Mathf.Sign(forwardSpeed) * brakeMagnitude;
+            }
+        }
 
         rb.AddForce(transform.forward * longitudinalForce, ForceMode.Force);
 
