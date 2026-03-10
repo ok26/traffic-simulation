@@ -191,7 +191,7 @@ public abstract class SharedGeometryIntersection : NodeBehavior
 
         Vector3 position = this.position;
 
-        const float laneOffset = 1.2f;
+        const float laneOffset = 2.0f;
         
         switch (connection)
         {
