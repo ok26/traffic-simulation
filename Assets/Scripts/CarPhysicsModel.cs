@@ -38,7 +38,7 @@ public class CarPhysicsModel : MonoBehaviour
     public float lateralDamping = 6f;
 
     [Header("Surface")]
-    public SurfaceType surfaceType = SurfaceType.Asphalt;
+    public SurfaceType surfaceType = SurfaceType.Ice;
 
     static readonly SurfaceCoefficients Asphalt = new(1.0f, 1.0f, 0.015f, 0.06f);
     static readonly SurfaceCoefficients Mud = new(0.55f, 0.6f, 0.06f, 0.08f);
