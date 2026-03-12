@@ -120,18 +120,6 @@ public class RoadNetwork : MonoBehaviour
 
     public IEnumerable<RoadSegment> GetSegments() => roadSegments;
     public IEnumerable<RoadNode> GetNodes() => roadNodes.Values;
-    public int NumEndpoints
-    {
-        get
-        {
-            int res = 0;
-            foreach (RoadNode node in GetNodes())
-            {
-                if (node.Behavior is Endpoint) res++;
-            }
-            return res;
-        }
-    }
 
     public RoadNode GetNodeById(int id)
     {
@@ -216,7 +204,7 @@ public class RoadNetwork : MonoBehaviour
     }
     void Start()
     {
-        TextAsset textFile = Resources.Load<TextAsset>("network2");
+        TextAsset textFile = Resources.Load<TextAsset>("network");
          if (textFile != null)
         {
             string fileContents = textFile.text;

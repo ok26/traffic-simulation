@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using NUnit.Framework.Constraints;
 using UnityEngine;
 
 public abstract class CarAction {}
@@ -364,6 +365,53 @@ public abstract class SharedGeometryIntersection : NodeBehavior
 
         return closest;
     }
+
+    protected List<LaneConnection> GetCrashingLanes(LaneConnection laneCon)
+    {
+        int connectionIn = GetConnectionFromLane(laneCon.From);
+        int connectionOut = GetConnectionFromLane(laneCon.To);
+
+        List<LaneConnection> crashingLanes = new();
+        // All left-turns
+        switch ((connectionIn, connectionOut))
+        {
+            case (6, 3):
+                crashingLanes.Add(laneConnections[0].First(x => GetConnectionFromLane(x.To) == 7));
+                crashingLanes.Add(laneConnections[0].First(x => GetConnectionFromLane(x.To) == 3));
+                break;
+            case (2, 1):
+                crashingLanes.Add(laneConnections[4].First(x => GetConnectionFromLane(x.To) == 1));
+                crashingLanes.Add(laneConnections[4].First(x => GetConnectionFromLane(x.To) == 3));
+                break;
+            case (0, 5):
+                crashingLanes.Add(laneConnections[6].First(x => GetConnectionFromLane(x.To) == 1));
+                crashingLanes.Add(laneConnections[6].First(x => GetConnectionFromLane(x.To) == 5));
+                break;
+            case (4, 7):
+                crashingLanes.Add(laneConnections[2].First(x => GetConnectionFromLane(x.To) == 7));
+                crashingLanes.Add(laneConnections[2].First(x => GetConnectionFromLane(x.To) == 5));
+                break;
+        }
+
+        return crashingLanes;
+    }
+
+    protected bool IsLeftTurn(LaneConnection laneCon)
+    {
+        int connectionIn = GetConnectionFromLane(laneCon.From);
+        int connectionOut = GetConnectionFromLane(laneCon.To);
+
+        switch ((connectionIn, connectionOut))
+        {
+            case (6, 3):
+            case (2, 1):
+            case (0, 5):
+            case (4, 7):
+                return true;
+        }
+
+        return false;
+    }
 }
 
 public class StopSignIntersection : SharedGeometryIntersection
@@ -374,7 +422,7 @@ public class StopSignIntersection : SharedGeometryIntersection
     Car currentDrivingCar;
 
     private float distanceToStopLine = 1.5f;
-    private float distanceToExit = 2.0f;
+    private float distanceToExit = 1.0f;
     private float maxTurnClaimDuration = 8.0f;
     private float currentDrivingCarAssignedTime = -1.0f;
 
@@ -473,7 +521,31 @@ public class TrafficLightIntersection : SharedGeometryIntersection
         int connection = GetConnectionFromLane(laneConnection.From);
         float distanceToConnection = Vector3.Distance(car.FrontBumberPosition, GetPositionOfLaneCon(connection));
 
-        if (hasGreen || car.inIntersection)
+        bool hasToMakeWay = false;
+        List<LaneConnection> crashingLanes = GetCrashingLanes(laneConnection);
+        if (crashingLanes.Count > 0)
+        {
+            Lane fromLane = crashingLanes[0].From;
+            foreach (LaneConnection laneCon in crashingLanes)
+            {
+                if (laneCon.CarsInConnection.Count > 0) hasToMakeWay = true;
+            }
+
+            if (fromLane.CarsInLane.Count > 0)
+            {
+                Car closestCar = fromLane.CarsInLane.Values[^1];
+
+                if (!IsLeftTurn(closestCar.NextConnection))
+                {
+                    float distanceToIntersection = Vector3.Distance(
+                    closestCar.FrontBumberPosition, GetPositionOfConnection(fromLane));
+                    if (distanceToIntersection <= 2.5f)
+                        hasToMakeWay = true;
+                }
+            }
+        }
+
+        if ((hasGreen && !hasToMakeWay) || car.inIntersection)
         {
             float reactionDistance = Mathf.Max(0.1f, 2.0f * car.velocity);
             float k = Mathf.Max(0.0f, 1.0f - (distanceToConnection / reactionDistance));

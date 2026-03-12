@@ -9,6 +9,18 @@ public class TrafficController : MonoBehaviour
     public float minSpawnDistance = 3.0f;
 
     private float timer = 0f;
+    private List<int> endPointIDs = new();
+
+    void Start()
+    {
+        foreach (RoadNode node in roadNetwork.GetNodes())
+        {
+            if (node.Behavior is Endpoint)
+            {
+                endPointIDs.Add(node.Id);
+            }
+        }
+    }
 
     void Update()
     {
@@ -26,11 +38,11 @@ public class TrafficController : MonoBehaviour
 
     bool SpawnCar()
     {
-        int numEndpoints = roadNetwork.NumEndpoints;
-        int startId = Random.Range(0, numEndpoints);
+        int numEndpoints = endPointIDs.Count;
+        int startId = endPointIDs[Random.Range(0, numEndpoints)];
         int goalId;
-        do { goalId = Random.Range(0, numEndpoints); } 
-        while (goalId != startId);
+        do { goalId = endPointIDs[Random.Range(0, numEndpoints)]; } 
+        while (goalId == startId);
 
         RoadNode startNode = roadNetwork.GetNodeById(startId);
         RoadNode goalNode = roadNetwork.GetNodeById(goalId);

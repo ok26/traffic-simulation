@@ -32,6 +32,7 @@ public class Car : MonoBehaviour
     public Vector3 BackBumperPosition => position - (wheelbase / 2) * direction;
     public Vector3 FrontBumberPosition => position + (wheelbase / 2) * direction;
     public bool inIntersection => carNavigator.inIntersection;
+    public LaneConnection NextConnection => carNavigator.NextConnection;
 
     void Start()
     {

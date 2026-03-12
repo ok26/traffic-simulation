@@ -20,6 +20,9 @@ public class CarNavigator
         : carPath?.Connections?.Count > 0 ? carPath.Connections.Peek().CarsInConnection : null;
 
     public bool inIntersection => carState == CarState.Intersection;
+    public LaneConnection NextConnection => carPath.Connections.Count != 0 ?
+        carPath.Connections.Peek() :
+        null;
 
     public CarNavigator(Car car, RoadNetwork network, RoadNode start, RoadNode goal)
     {
