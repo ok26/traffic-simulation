@@ -9,4 +9,5 @@ The following posts demonstrate different aspects of the system, described in fu
 
 - [Stop sign intersection](2026/03/12/stop-sign.html)
 - [Traffic light intersection](2026/03/12/traffic-light.html)
+- [Network](2026/03/12/network.html)
 
