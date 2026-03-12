@@ -1,6 +1,6 @@
 # Traffic Light Intersection
 
-Here we showcase an intersection with traffic lights at each connection. This showcases 2 different materials for the ground, although not visualized differently. The times for each light color 
+Here we showcase an intersection with traffic lights at each connection. This showcases 2 different materials for the ground, although not visualized differently. Currently the intersection has 8 seconds green light in one direction, while red in the other direction, then a 1 second yellow light and then it flips. 
 
 ## Asphalt: 
 
