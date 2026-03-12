@@ -4,8 +4,13 @@ using System.Collections.Generic;
 public class RoadVisualizer : MonoBehaviour
 {
     public RoadNetwork network;
-    public float yOffset = 0.05f;
+    private float yOffset = 0.05f;
+
+    private const float padding = 1f;
+
     public Material RoadMaterial;
+
+    public Material LineMaterial;
 
     void Start()
     {
@@ -35,12 +40,11 @@ public class RoadVisualizer : MonoBehaviour
 
     void DrawEndpoint(RoadNode node)
     {
-        float width = Constants.laneWidth/4f;
         GameObject endpointObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
         endpointObj.name = $"Endpoint_{node.Id}";
         endpointObj.transform.SetParent(transform);
         endpointObj.transform.position = node.Position + Vector3.up * yOffset;
-        endpointObj.transform.localScale = new Vector3(width, 0.1f, width);
+        endpointObj.transform.localScale = new Vector3(padding/2f, 0.1f, padding/2f);
         Collider endpointCollider = endpointObj.GetComponent<Collider>();
         if (endpointCollider != null)
             Destroy(endpointCollider);
@@ -50,16 +54,15 @@ public class RoadVisualizer : MonoBehaviour
 
     void DrawSharedGeometryIntersection(RoadNode node)
     {
-        float width = Constants.laneWidth/4f;
-        GameObject intersectionObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        intersectionObj.name = $"StopSignIntersection_{node.Id}";
-        intersectionObj.transform.SetParent(transform);
-        intersectionObj.transform.position = node.Position + Vector3.up * yOffset;
-        intersectionObj.transform.localScale = new Vector3(width, 0.1f, width);
-        Collider intersectionCollider = intersectionObj.GetComponent<Collider>();
+        GameObject nodeObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        nodeObj.name = $"Node_{node.Id}";
+        nodeObj.transform.SetParent(transform);
+        nodeObj.transform.position = node.Position + Vector3.up * yOffset;
+        nodeObj.transform.localScale = new Vector3(padding, 0.1f, padding);
+        Collider intersectionCollider = nodeObj.GetComponent<Collider>();
         if (intersectionCollider != null)
             Destroy(intersectionCollider);
-        var renderer = intersectionObj.GetComponent<MeshRenderer>();
+        var renderer = nodeObj.GetComponent<MeshRenderer>();
         renderer.sharedMaterial = RoadMaterial;
     }
 
@@ -162,8 +165,61 @@ public class RoadVisualizer : MonoBehaviour
             Mesh mesh = GenerateSegmentMesh(segment);
 
             meshFilter.mesh = mesh;
+
+            DrawLine(segment.Points);
         }       
     }
+
+  void DrawLine(List<Vector3> points)
+{
+    GameObject obj = new GameObject("LaneLine");
+    obj.transform.SetParent(transform);
+    MeshFilter meshFilter = obj.AddComponent<MeshFilter>();
+    MeshRenderer meshRenderer = obj.AddComponent<MeshRenderer>();
+    meshRenderer.sharedMaterial = LineMaterial;
+
+    float width = 0.25f;
+
+    List<Vector3> vertices = new();
+    List<int> triangles = new();
+
+    for (int i = 0; i < points.Count; i++)
+    {
+        Vector3 p = new Vector3(points[i].x, yOffset + 0.01f, points[i].z);
+
+        Vector3 forward;
+
+        if (i < points.Count - 1)
+            forward = (points[i + 1] - points[i]).normalized;
+        else
+            forward = (points[i] - points[i - 1]).normalized;
+
+        Vector3 perp = 0.5f * width * Vector3.Cross(Vector3.up, forward);
+
+        vertices.Add(p - perp);
+        vertices.Add(p + perp);
+
+        
+    }
+    for (int i = 0; i < points.Count - 1; i++)
+        {
+            int v = i * 2;
+            triangles.Add(v);
+            triangles.Add(v + 2);
+            triangles.Add(v + 1);
+
+            triangles.Add(v + 1);
+            triangles.Add(v + 2);
+            triangles.Add(v + 3);
+        }
+
+        Mesh mesh = new Mesh();
+        mesh.SetVertices(vertices);
+        mesh.SetTriangles(triangles, 0);
+        mesh.RecalculateNormals();
+
+    meshFilter.mesh = mesh;
+}
 
     void OnDrawGizmos()
     {
