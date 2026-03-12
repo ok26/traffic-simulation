@@ -1,28 +1,19 @@
 # Real-time multi-agent traffic simulation visualized in Unity
 
+Link to Blog: https://ok26.github.io/traffic-simulation/
+
 ## Currently implemented nodes
 #### 0: Endpoint
-A node without any real logic which can be used as a start/finish point.
+A node without any real logic, which can be used as a start/finish point.
 
 #### 1: Trafic light intersection
-Simulates an intersection with traffic lights with green, yellow and red lights which times can be modified. 
+Simulates an intersection with traffic lights with green, yellow and red lights.
 
 #### 2: Stop sign intersection
-Simulates an intersection with stop signs which halt cars and force them to use the right priority.  
-
+Simulates an intersection with stop signs in each direction. 
 
 ## Directions and connections of nodes
 Node types 0-2 use the following format: 
-```
-z
-(0 1)
-
-|
-|
-
-(0 0) ---- (1 0) x
-```
-
 
 ### Intersection Direction
 ```
@@ -48,7 +39,7 @@ Create your desired road network in "Assets/Resources/network.txt"
 
 The format of the file is the following: 
 
-#############
+```
 
 **n**  *Number of nodes*
 
@@ -84,4 +75,4 @@ The format of the file is the following:
 
 ...
 
-#############
+```
