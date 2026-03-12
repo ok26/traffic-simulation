@@ -29,7 +29,7 @@ public class CarPhysicsModel : MonoBehaviour
     public Rigidbody rb;
 
     [Header("Vehicle")]
-    public float wheelbase = 1.5f;
+    public float wheelbase = 1.9f;
     public float maxSteeringAngle = 35f;
     public float maxEngineForce = 6000f;
     public float maxBrakeForce = 8000f;

@@ -6,7 +6,6 @@ public class CarNavigator
 {
     Car car;
     RoadPath carPath;
-    RoadNetwork roadNetwork;
 
     // State, updated with CarNavigator.UpdateState()
     Lane currentLane;
@@ -26,7 +25,6 @@ public class CarNavigator
 
     public CarNavigator(Car car, RoadNetwork network, RoadNode start, RoadNode goal)
     {
-        roadNetwork = network;
         carPath = AStar.FindPath(network, start, goal);
         if (carPath == null)
             return;

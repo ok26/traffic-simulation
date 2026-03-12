@@ -22,7 +22,7 @@ public class Car : MonoBehaviour
     public Vector3 position = Vector3.zero;
     public Vector3 direction = Vector3.forward;
     public float velocity = 0.0f;
-    public float wheelbase = 1.5f;
+    public float wheelbase = 1.9f;
     public float steeringAngle = 0.0f;
     public float maxSpeed = 5f;
 
