@@ -204,7 +204,7 @@ public class RoadNetwork : MonoBehaviour
     }
     void Start()
     {
-        TextAsset textFile = Resources.Load<TextAsset>("network");
+        TextAsset textFile = Resources.Load<TextAsset>("network2");
          if (textFile != null)
         {
             string fileContents = textFile.text;
