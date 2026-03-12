@@ -651,8 +651,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RoadVisualizer
   network: {fileID: 593271310}
-  yOffset: 0.05
   RoadMaterial: {fileID: 2100000, guid: 2e7b87343d73d224ba8a85644e2b7b1e, type: 2}
+  LineMaterial: {fileID: 2100000, guid: 346a3a362bfb6c344a31ea3b0529ddc9, type: 2}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
