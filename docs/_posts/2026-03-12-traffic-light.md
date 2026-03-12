@@ -5,12 +5,12 @@ Here we showcase an intersection with traffic lights at each connection. This sh
 ## Asphalt: 
 
 <video controls width="600">
-  <source src="docs/assets/TrafficLightAsphalt.mp4" type="video/mp4">
+  <source src="{{ '/assets/TrafficLightAsphalt.mp4' | relative_url }}" type="video/mp4">
 </video>
 
 
 ## Ice: 
 
 <video controls width="600">
-  <source src="docs/assets/TrafficLightIce.mp4" type="video/mp4">
+  <source src="{{ '/assets/TrafficLightIce.mp4' | relative_url }}" type="video/mp4">
 </video>
