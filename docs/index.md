@@ -2,7 +2,7 @@
 
 This project simulates real-time multi-agent traffic visualized in Unity. 
 
-The following posts demonstrate different aspects of the system, described in further detail in each posts. 
+The following posts demonstrate different aspects of the system, described in further detail in each posts. In the videos there are debug lines which work to illustrate the paths cars try to follow. 
 
 
 ## Posts: 
