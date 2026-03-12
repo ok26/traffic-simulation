@@ -10,22 +10,6 @@ public class TrafficController : MonoBehaviour
 
     private float timer = 0f;
 
-    private (int startId, int goalId)[] spawnConfigs = new (int, int)[]
-    {
-        (0, 1),
-        (1, 0),
-        (2, 3),
-        (3, 2),
-        (0, 2),
-        (1, 3),
-        (2, 0),
-        (3, 1),
-        (0, 3),
-        (1, 2),
-        (2, 1),
-        (3, 0),
-    };
-
     void Update()
     {
         if (roadNetwork == null || carPrefab == null)
@@ -42,10 +26,13 @@ public class TrafficController : MonoBehaviour
 
     bool SpawnCar()
     {
-        int randomIndex = Random.Range(0, spawnConfigs.Length);
-        var (startId, goalId) = spawnConfigs[randomIndex];
+        int numEndpoints = roadNetwork.NumEndpoints;
+        int startId = Random.Range(0, numEndpoints);
+        int goalId;
+        do { goalId = Random.Range(0, numEndpoints); } 
+        while (goalId != startId);
 
-        RoadNode startNode = roadNetwork.GetNodeById(startId);   
+        RoadNode startNode = roadNetwork.GetNodeById(startId);
         RoadNode goalNode = roadNetwork.GetNodeById(goalId);
 
         if (startNode == null || goalNode == null)

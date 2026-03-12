@@ -120,6 +120,18 @@ public class RoadNetwork : MonoBehaviour
 
     public IEnumerable<RoadSegment> GetSegments() => roadSegments;
     public IEnumerable<RoadNode> GetNodes() => roadNodes.Values;
+    public int NumEndpoints
+    {
+        get
+        {
+            int res = 0;
+            foreach (RoadNode node in GetNodes())
+            {
+                if (node.Behavior is Endpoint) res++;
+            }
+            return res;
+        }
+    }
 
     public RoadNode GetNodeById(int id)
     {
