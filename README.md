@@ -6,7 +6,7 @@ Link to Blog: https://ok26.github.io/traffic-simulation/
 #### 0: Endpoint
 A node without any real logic, which can be used as a start/finish point.
 
-#### 1: Trafic light intersection
+#### 1: Traffic light intersection
 Simulates an intersection with traffic lights with green, yellow and red lights.
 
 #### 2: Stop sign intersection
